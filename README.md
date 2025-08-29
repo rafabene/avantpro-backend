@@ -4,25 +4,36 @@ API para gerenciamento de usuários com suporte a perfil completo, desenvolvida 
 
 ## 📋 Características
 
+- **Autenticação JWT**: Login, registro e recuperação de senha com tokens JWT
 - **CRUD de Usuários**: Criar, listar, buscar por ID/username, atualizar e deletar usuários
 - **Perfil de Usuário**: Endereço completo (rua, cidade, bairro, CEP) e telefone
-- **Segurança**: Senhas criptografadas com bcrypt
+- **Segurança**: Senhas criptografadas com bcrypt e autenticação baseada em tokens
 - **Validação**: Validação completa de dados usando go-playground/validator
 - **Paginação e Ordenação**: Lista paginada com ordenação por diferentes campos
+- **CORS**: Configuração de CORS para integração com frontend
 - **Documentação**: Swagger/OpenAPI gerado automaticamente
 - **Testes**: Cobertura completa com testes unitários, de repositório e integração
 
 ## 🛠 Tecnologias
 
 - **Go 1.24**: Linguagem principal
-- **Gin**: Framework web HTTP
+- **Gin**: Framework web HTTP com middleware CORS
 - **GORM**: ORM para PostgreSQL
 - **PostgreSQL**: Banco de dados principal
+- **JWT**: Autenticação baseada em tokens (golang-jwt/jwt)
+- **bcrypt**: Criptografia de senhas
 - **Swagger**: Documentação da API
 - **Testcontainers**: Testes com PostgreSQL real
 - **UUID**: Chaves primárias com PostgreSQL gen_random_uuid()
 
 ## 🚀 Endpoints da API
+
+### Autenticação
+
+- `POST /api/v1/auth/login` - Fazer login e obter token JWT
+- `POST /api/v1/auth/register` - Registrar novo usuário e obter token
+- `POST /api/v1/auth/password-reset` - Solicitar reset de senha
+- `POST /api/v1/auth/password-reset/confirm` - Confirmar reset de senha com token
 
 ### Usuários
 
@@ -78,12 +89,18 @@ DB_USER=postgres
 DB_PASSWORD=postgres
 DB_NAME=avantpro_backend
 DB_SSLMODE=disable
+
+# JWT Configuration
+JWT_SECRET=your-super-secret-jwt-key-change-in-production
+JWT_EXPIRES_IN=24h
 ```
 
 ### Segurança em Produção
 
 - **Swagger UI**: Disponível apenas em `ENV=development`
+- **JWT Secret**: OBRIGATÓRIO alterar `JWT_SECRET` em produção
 - **Senhas**: Sempre criptografadas com bcrypt
+- **CORS**: Configurado para `http://localhost:4200` (ajustar para produção)
 - **Trusted Proxies**: Configuráveis via `TRUSTED_PROXIES` para produção
 - **SSL**: Recomendado `DB_SSLMODE=require` em produção
 
@@ -148,8 +165,48 @@ make check
 
 ## 📊 Exemplos de Uso
 
-### Criar Usuário
+### Autenticação
 
+#### Registrar Usuário
+```bash
+curl -X POST http://localhost:8080/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "user@example.com",
+    "name": "João Silva",
+    "password": "password123",
+    "profile": {
+      "street": "Rua das Flores, 123",
+      "city": "São Paulo",
+      "district": "Centro",
+      "zip_code": "01234567",
+      "phone": "11987654321"
+    }
+  }'
+```
+
+#### Login
+```bash
+curl -X POST http://localhost:8080/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "user@example.com",
+    "password": "password123"
+  }'
+```
+
+#### Solicitar Reset de Senha
+```bash
+curl -X POST http://localhost:8080/api/v1/auth/password-reset \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com"
+  }'
+```
+
+### Usuários
+
+#### Criar Usuário
 ```bash
 curl -X POST http://localhost:8080/api/v1/users \
   -H "Content-Type: application/json" \
@@ -167,14 +224,12 @@ curl -X POST http://localhost:8080/api/v1/users \
   }'
 ```
 
-### Buscar por Username
-
+#### Buscar por Username
 ```bash
 curl http://localhost:8080/api/v1/users/username/user@example.com
 ```
 
-### Listar com Paginação e Ordenação
-
+#### Listar com Paginação e Ordenação
 ```bash
 curl "http://localhost:8080/api/v1/users?page=1&limit=10&sortBy=name&sortOrder=asc"
 ```
@@ -189,10 +244,12 @@ curl "http://localhost:8080/api/v1/users?page=1&limit=10&sortBy=name&sortOrder=a
 
 ### Segurança
 
-- Senhas criptografadas com bcrypt
-- Prevenção de SQL injection com whitelist de campos
-- Configuração segura de trusted proxies
-- Validação completa de entrada
+- **Autenticação JWT**: Tokens seguros para autenticação de usuários
+- **Senhas criptografadas**: bcrypt com salt automático
+- **Prevenção SQL Injection**: Whitelist de campos para ordenação
+- **CORS configurado**: Controle de origem para requests cross-domain
+- **Trusted Proxies**: Configuração segura para ambientes de produção
+- **Validação completa**: Entrada sanitizada em todos os endpoints
 
 ### Validações
 
