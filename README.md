@@ -58,16 +58,19 @@ avantpro-backend/
 ├── cmd/server/          # Entry point da aplicação
 ├── internal/
 │   ├── config/          # Configuração baseada em ambiente
-│   ├── controllers/     # Controllers HTTP
+│   ├── controllers/     # Controllers HTTP (auth, user)
 │   ├── database/        # Conexão e migrações PostgreSQL
 │   ├── errors/          # Tratamento de erros RFC 7807
 │   ├── models/          # Domain models e DTOs
 │   ├── repositories/    # Data access layer
-│   └── services/        # Business logic
+│   └── services/        # Business logic (auth, user)
 ├── tests/integration/   # Testes de integração
-├── docs/               # Documentação Swagger
+├── docs/               # Documentação Swagger gerada
 ├── bin/                # Binários compilados
-└── Makefile           # Comandos de desenvolvimento
+├── tmp/                # Arquivos temporários (air)
+├── CLAUDE.md           # Instruções para Claude Code
+├── Makefile           # Comandos de desenvolvimento
+└── go.mod             # Dependências Go
 ```
 
 ## 🔧 Configuração
@@ -126,8 +129,8 @@ make install-tools
 make db/setup
 
 # Configurar variáveis de ambiente
-cp .env.example .env
-# Edite .env conforme necessário
+# Crie um arquivo .env na raiz do projeto com as variáveis necessárias
+# (veja a seção "Variáveis de Ambiente" abaixo)
 ```
 
 ### 3. Executar Aplicação
@@ -146,9 +149,10 @@ make build
 
 ### 4. Acessar Documentação
 
-- API: http://localhost:8080
-- Swagger UI: http://localhost:8080/swagger/index.html (apenas em desenvolvimento)
-- Health Check: http://localhost:8080/health
+- **API**: http://localhost:8080
+- **Swagger UI**: http://localhost:8080/swagger/index.html (apenas em desenvolvimento)
+- **Health Check**: http://localhost:8080/health
+- **Documentação da API**: Todas as rotas documentadas com Swagger/OpenAPI
 
 ## 🧪 Testes
 
