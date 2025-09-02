@@ -68,6 +68,9 @@ func runMigrations(db *gorm.DB) error {
 	return db.AutoMigrate(
 		&models.User{},
 		&models.Profile{},
+		&models.Organization{},
+		&models.OrganizationMember{},
+		&models.OrganizationInvite{},
 	)
 }
 

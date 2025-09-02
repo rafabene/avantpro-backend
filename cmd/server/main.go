@@ -3,6 +3,9 @@ package main
 import (
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -14,8 +17,10 @@ import (
 	"github.com/rafabene/avantpro-backend/internal/config"
 	"github.com/rafabene/avantpro-backend/internal/controllers"
 	"github.com/rafabene/avantpro-backend/internal/database"
+	"github.com/rafabene/avantpro-backend/internal/middleware"
 	"github.com/rafabene/avantpro-backend/internal/repositories"
 	"github.com/rafabene/avantpro-backend/internal/services"
+	"github.com/rafabene/avantpro-backend/internal/worker"
 )
 
 // @title AvantPro Backend API
@@ -55,14 +60,32 @@ func main() {
 
 	// Initialize repositories
 	userRepo := repositories.NewUserRepository(db)
+	orgRepo := repositories.NewOrganizationRepository(db)
 
 	// Initialize services
 	userService := services.NewUserService(userRepo)
+	emailService := services.NewEmailService()
+	orgService := services.NewOrganizationService(orgRepo, userRepo, emailService)
 
 	// Initialize controllers
 	userController := controllers.NewUserController(userService)
+	orgController := controllers.NewOrganizationController(orgService)
 	authService := services.NewAuthService(userRepo, cfg.JWT.Secret)
 	authController := controllers.NewAuthController(authService)
+
+	// Initialize and start worker for periodic maintenance tasks
+	maintenanceWorker := worker.NewWorker(orgRepo)
+	maintenanceWorker.Start()
+
+	// Setup graceful shutdown for worker
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		<-sigChan
+		log.Println("Received shutdown signal")
+		maintenanceWorker.Stop()
+		os.Exit(0)
+	}()
 
 	// Setup router
 	router := gin.New()
@@ -73,7 +96,7 @@ func main() {
 
 	// CORS middleware
 	config := cors.DefaultConfig()
-	config.AllowOrigins = []string{"http://localhost:4200"}
+	config.AllowOrigins = []string{"http://localhost:4200", "http://localhost:4201"}
 	config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
 	config.AllowHeaders = []string{"Origin", "Content-Type", "Accept", "Authorization"}
 	router.Use(cors.New(config))
@@ -118,6 +141,35 @@ func main() {
 			users.GET("/username/:username", userController.GetUserByUsername)
 			users.PUT("/:id", userController.UpdateUser)
 			users.DELETE("/:id", userController.DeleteUser)
+		}
+
+		// Organization routes (protected)
+		organizations := v1.Group("/organizations")
+		organizations.Use(middleware.AuthMiddleware(cfg.JWT.Secret))
+		{
+			// Organization CRUD
+			organizations.POST("", orgController.CreateOrganization)
+			organizations.GET("/my", orgController.GetUserOrganizations)
+			organizations.GET("/memberships", orgController.GetUserMemberships)
+			organizations.GET("/:id", orgController.GetOrganization)
+			organizations.PUT("/:id", orgController.UpdateOrganization)
+			organizations.DELETE("/:id", orgController.DeleteOrganization)
+
+			// Organization Members
+			organizations.GET("/:id/members", orgController.GetOrganizationMembers)
+			organizations.PUT("/:id/members/:userId", orgController.UpdateMemberRole)
+			organizations.DELETE("/:id/members/:userId", orgController.RemoveMember)
+
+			// Organization Invites
+			organizations.POST("/:id/invites", orgController.InviteUser)
+			organizations.GET("/:id/invites", orgController.GetOrganizationInvites)
+			
+			// Invite Management (by ID)
+			organizations.POST("/invites/id/:inviteId/resend", orgController.ResendInvite)
+			organizations.DELETE("/invites/id/:inviteId", orgController.RevokeInvite)
+			
+			// Invite Acceptance (by token)
+			organizations.POST("/invites/token/:token/accept", orgController.AcceptInvite)
 		}
 	}
 

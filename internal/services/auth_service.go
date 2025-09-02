@@ -11,21 +11,61 @@ import (
 	"github.com/rafabene/avantpro-backend/internal/repositories"
 )
 
-// AuthService interface defines authentication operations
+// AuthService interface defines authentication and authorization operations.
+// This interface provides methods for user authentication, registration,
+// and password management with JWT token generation.
 type AuthService interface {
+	// Login authenticates a user with email and password.
+	// This method validates credentials and returns a JWT token for authorized access.
+	// Parameters:
+	//   - req: Login request containing email and password
+	// Returns:
+	//   - *models.LoginResponse: JWT token and user information
+	//   - error: Error if credentials are invalid or authentication fails
 	Login(req *models.LoginRequest) (*models.LoginResponse, error)
+	
+	// Register creates a new user account and automatically logs them in.
+	// This method validates user data, creates the account, and returns a JWT token.
+	// Parameters:
+	//   - req: Registration request containing email, name, and password
+	// Returns:
+	//   - *models.LoginResponse: JWT token and user information
+	//   - error: Error if validation fails or user already exists
 	Register(req *models.RegisterRequest) (*models.LoginResponse, error)
+	
+	// RequestPasswordReset initiates the password reset process for a user.
+	// This method generates a reset token and sends a password reset email.
+	// Parameters:
+	//   - email: Email address of the user requesting password reset
+	// Returns:
+	//   - error: Error if user not found or email sending fails
 	RequestPasswordReset(email string) error
+	
+	// ResetPassword completes the password reset process using a reset token.
+	// This method validates the reset token and updates the user's password.
+	// Parameters:
+	//   - token: Password reset token from email
+	//   - newPassword: New password to set for the user
+	// Returns:
+	//   - error: Error if token is invalid, expired, or password update fails
 	ResetPassword(token, newPassword string) error
 }
 
-// authService implements AuthService interface
+// authService implements AuthService interface.
+// It provides authentication and authorization services including user login,
+// registration, password management, and JWT token generation and validation.
 type authService struct {
-	userRepo  repositories.UserRepository
-	jwtSecret string
+	userRepo  repositories.UserRepository // Repository for user data operations
+	jwtSecret string                       // Secret key for JWT token signing and validation
 }
 
-// NewAuthService creates a new AuthService instance
+// NewAuthService creates a new AuthService instance.
+// This constructor initializes the authentication service with required dependencies.
+// Parameters:
+//   - userRepo: Repository interface for user data operations
+//   - jwtSecret: Secret key for JWT token signing (should be strong and secure)
+// Returns:
+//   - AuthService: Configured authentication service ready for use
 func NewAuthService(userRepo repositories.UserRepository, jwtSecret string) AuthService {
 	return &authService{
 		userRepo:  userRepo,

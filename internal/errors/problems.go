@@ -11,6 +11,16 @@ import (
 	"github.com/moogar0880/problems"
 )
 
+// ProblemDetail represents an RFC 7807 problem detail for Swagger documentation
+// @Description Error response following RFC 7807 Problem Details for HTTP APIs
+type ProblemDetail struct {
+	Type     string `json:"type" example:"https://avantpro-backend.com/errors/validation"`
+	Title    string `json:"title" example:"Validation Error"`
+	Status   int    `json:"status" example:"400"`
+	Detail   string `json:"detail" example:"Invalid input data"`
+	Instance string `json:"instance,omitempty" example:"/api/v1/users"`
+}
+
 // Common error types for the API
 const (
 	// Type URIs for different error categories
@@ -20,6 +30,8 @@ const (
 	InternalErrorType    = "https://avantpro-backend.com/errors/internal"
 	BadRequestErrorType  = "https://avantpro-backend.com/errors/bad-request"
 	UnauthorizedErrorType = "https://avantpro-backend.com/errors/unauthorized"
+	ForbiddenErrorType   = "https://avantpro-backend.com/errors/forbidden"
+	GoneErrorType        = "https://avantpro-backend.com/errors/gone"
 )
 
 // Common error messages
@@ -90,6 +102,28 @@ func UnauthorizedError(detail string, instance ...string) *problems.Problem {
 	prob := problems.NewDetailedProblem(http.StatusUnauthorized, detail)
 	prob.Type = UnauthorizedErrorType
 	prob.Title = "Unauthorized"
+	if len(instance) > 0 {
+		prob.Instance = instance[0]
+	}
+	return prob
+}
+
+// ForbiddenError creates a forbidden error problem
+func ForbiddenError(detail string, instance ...string) *problems.Problem {
+	prob := problems.NewDetailedProblem(http.StatusForbidden, detail)
+	prob.Type = ForbiddenErrorType
+	prob.Title = "Forbidden"
+	if len(instance) > 0 {
+		prob.Instance = instance[0]
+	}
+	return prob
+}
+
+// GoneError creates a gone error problem (e.g., expired invitations)
+func GoneError(detail string, instance ...string) *problems.Problem {
+	prob := problems.NewDetailedProblem(http.StatusGone, detail)
+	prob.Type = GoneErrorType
+	prob.Title = "Resource Gone"
 	if len(instance) > 0 {
 		prob.Instance = instance[0]
 	}
@@ -171,4 +205,53 @@ func formatFieldError(fieldName, tag, param string) string {
 	default:
 		return fmt.Sprintf("%s is invalid", fieldName)
 	}
+}
+
+// Convenience handlers for Gin controllers
+
+// HandleValidationError handles validation errors
+func HandleValidationError(c *gin.Context, detail string) {
+	prob := ValidationError(detail, GetInstance(c))
+	RespondWithProblem(c, prob)
+}
+
+// HandleNotFoundError handles not found errors
+func HandleNotFoundError(c *gin.Context, detail string) {
+	prob := NotFoundError(detail, GetInstance(c))
+	RespondWithProblem(c, prob)
+}
+
+// HandleConflictError handles conflict errors
+func HandleConflictError(c *gin.Context, detail string) {
+	prob := ConflictError(detail, GetInstance(c))
+	RespondWithProblem(c, prob)
+}
+
+// HandleInternalError handles internal server errors
+func HandleInternalError(c *gin.Context, detail string, err error) {
+	// Log the actual error for debugging (don't expose to client)
+	if err != nil {
+		// TODO: Add proper logging
+		fmt.Printf("Internal error: %v\n", err)
+	}
+	prob := InternalError(GetInstance(c))
+	RespondWithProblem(c, prob)
+}
+
+// HandleForbiddenError handles forbidden errors
+func HandleForbiddenError(c *gin.Context, detail string) {
+	prob := ForbiddenError(detail, GetInstance(c))
+	RespondWithProblem(c, prob)
+}
+
+// HandleGoneError handles gone errors
+func HandleGoneError(c *gin.Context, detail string) {
+	prob := GoneError(detail, GetInstance(c))
+	RespondWithProblem(c, prob)
+}
+
+// HandleUnauthorizedError handles unauthorized errors
+func HandleUnauthorizedError(c *gin.Context, detail string) {
+	prob := UnauthorizedError(detail, GetInstance(c))
+	RespondWithProblem(c, prob)
 }

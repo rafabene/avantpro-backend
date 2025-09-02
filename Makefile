@@ -102,7 +102,7 @@ run:
 	$(GOCMD) run $(MAIN_PATH)/main.go
 
 # Run with hot reload (requires air)
-dev:
+dev: swagger
 	@echo "Starting development server with hot reload..."
 	@which air > /dev/null || (echo "air not installed. Run: make install-tools" && exit 1)
 	air
@@ -207,7 +207,7 @@ help:
 	@echo ""
 	@echo "Development:"
 	@echo "  run           - Run the application"
-	@echo "  dev           - Run with hot reload (air)"
+	@echo "  dev           - Generate Swagger docs and run with hot reload (air)"
 	@echo "  swagger       - Generate Swagger documentation"
 	@echo "  install-tools - Install all development tools"
 	@echo ""

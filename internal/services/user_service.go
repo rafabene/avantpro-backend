@@ -13,34 +13,87 @@ import (
 	"github.com/rafabene/avantpro-backend/internal/repositories"
 )
 
-// UserService defines the interface for user business logic
+// UserService defines the interface for user business logic operations.
+// This interface provides methods for managing user data with proper validation,
+// error handling, and business rule enforcement.
 type UserService interface {
-	// CreateUser validates and creates a new user
+	// CreateUser validates and creates a new user in the system.
+	// This method performs comprehensive validation of user data including:
+	//   - Email format validation and uniqueness check
+	//   - Password strength requirements
+	//   - Profile data validation if provided
+	// Parameters:
+	//   - req: User creation request containing user details and optional profile
+	// Returns:
+	//   - *models.UserResponse: Created user data (password excluded)
+	//   - error: Validation or creation error
 	CreateUser(req *models.UserCreateRequest) (*models.UserResponse, error)
 	
-	// GetUserByID retrieves a user by their unique identifier
+	// GetUserByID retrieves a user by their unique identifier.
+	// This method loads the user with their profile information if available.
+	// Parameters:
+	//   - id: UUID of the user to retrieve
+	// Returns:
+	//   - *models.UserResponse: User data with profile (password excluded)
+	//   - error: Error if user not found or database error
 	GetUserByID(id uuid.UUID) (*models.UserResponse, error)
 	
-	// GetUserByUsername retrieves a user by their username (email)
+	// GetUserByUsername retrieves a user by their username (email address).
+	// This method is commonly used for login and user lookup operations.
+	// Parameters:
+	//   - username: Email address of the user to find
+	// Returns:
+	//   - *models.UserResponse: User data with profile (password excluded)
+	//   - error: Error if user not found or database error
 	GetUserByUsername(username string) (*models.UserResponse, error)
 	
-	// ListUsers retrieves a paginated list with validation and sorting
+	// ListUsers retrieves a paginated list of users with validation and sorting.
+	// This method supports filtering, sorting, and pagination for user management.
+	// Parameters:
+	//   - page: Page number for pagination (1-based)
+	//   - limit: Number of users per page (max 100)
+	//   - sortBy: Field to sort by (name, username, created_at, updated_at)
+	//   - sortOrder: Sort direction (asc, desc)
+	// Returns:
+	//   - *models.UserListResponse: Paginated user list with metadata
+	//   - error: Validation or query error
 	ListUsers(page, limit int, sortBy, sortOrder string) (*models.UserListResponse, error)
 	
-	// UpdateUser validates and updates an existing user
+	// UpdateUser validates and updates an existing user's information.
+	// This method allows partial updates and maintains data integrity.
+	// Only provided fields are updated, others remain unchanged.
+	// Parameters:
+	//   - id: UUID of the user to update
+	//   - req: Update request containing new user data
+	// Returns:
+	//   - *models.UserResponse: Updated user data (password excluded)
+	//   - error: Validation or update error
 	UpdateUser(id uuid.UUID, req *models.UserUpdateRequest) (*models.UserResponse, error)
 	
-	// DeleteUser removes a user by their unique identifier
+	// DeleteUser removes a user by their unique identifier.
+	// This performs a soft delete, marking the user as deleted while preserving data.
+	// The user's profile is also soft deleted through cascade operations.
+	// Parameters:
+	//   - id: UUID of the user to delete
+	// Returns:
+	//   - error: Error if user not found or deletion fails
 	DeleteUser(id uuid.UUID) error
 }
 
-// userService implements the UserService interface
+// userService implements the UserService interface.
+// It provides business logic for user management with validation, error handling,
+// and proper data transformation between domain models and API responses.
 type userService struct {
-	repo      repositories.UserRepository
-	validator *validator.Validate
+	repo      repositories.UserRepository // Repository for user data operations
+	validator *validator.Validate         // Validator for input validation
 }
 
-// NewUserService creates a new UserService instance
+// NewUserService creates a new UserService instance.
+// This constructor initializes the service with a user repository and validator.
+// Parameters:
+//   - repo: Repository interface for user data operations
+// Returns:
+//   - UserService: Configured user service ready for use
 func NewUserService(repo repositories.UserRepository) UserService {
 	return &userService{
 		repo:      repo,
