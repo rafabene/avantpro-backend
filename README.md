@@ -5,7 +5,7 @@ API para gerenciamento de usuários com suporte a perfil completo, desenvolvida 
 ## 📋 Características
 
 - **Autenticação JWT**: Login, registro e recuperação de senha com tokens JWT
-- **CRUD de Usuários**: Criar, listar, buscar por ID/username, atualizar e deletar usuários
+- **Sistema de Organizações**: Criação, gerenciamento de membros e sistema de convites
 - **Perfil de Usuário**: Endereço completo (rua, cidade, bairro, CEP) e telefone
 - **Segurança**: Senhas criptografadas com bcrypt e autenticação baseada em tokens
 - **Validação**: Validação completa de dados usando go-playground/validator
@@ -35,14 +35,22 @@ API para gerenciamento de usuários com suporte a perfil completo, desenvolvida 
 - `POST /api/v1/auth/password-reset` - Solicitar reset de senha
 - `POST /api/v1/auth/password-reset/confirm` - Confirmar reset de senha com token
 
-### Usuários
+### Organizações
 
-- `POST /api/v1/users` - Criar usuário
-- `GET /api/v1/users` - Listar usuários (paginado, com ordenação)
-- `GET /api/v1/users/{id}` - Buscar usuário por ID
-- `GET /api/v1/users/username/{username}` - Buscar usuário por username (email)
-- `PUT /api/v1/users/{id}` - Atualizar usuário
-- `DELETE /api/v1/users/{id}` - Deletar usuário (soft delete)
+- `POST /api/v1/organizations` - Criar organização
+- `GET /api/v1/organizations/my` - Listar organizações criadas pelo usuário
+- `GET /api/v1/organizations/memberships` - Listar organizações onde é membro
+- `GET /api/v1/organizations/{id}` - Buscar organização por ID
+- `PUT /api/v1/organizations/{id}` - Atualizar organização
+- `DELETE /api/v1/organizations/{id}` - Deletar organização
+- `GET /api/v1/organizations/{id}/members` - Listar membros da organização
+- `PUT /api/v1/organizations/{id}/members/{userId}` - Atualizar role do membro
+- `DELETE /api/v1/organizations/{id}/members/{userId}` - Remover membro
+- `POST /api/v1/organizations/{id}/invites` - Convidar usuário
+- `GET /api/v1/organizations/{id}/invites` - Listar convites da organização
+- `POST /api/v1/organizations/invites/token/{token}/accept` - Aceitar convite
+- `DELETE /api/v1/organizations/invites/id/{inviteId}` - Revogar convite
+- `POST /api/v1/organizations/invites/id/{inviteId}/resend` - Reenviar convite
 
 ### Parâmetros de Consulta (Lista)
 
@@ -58,12 +66,12 @@ avantpro-backend/
 ├── cmd/server/          # Entry point da aplicação
 ├── internal/
 │   ├── config/          # Configuração baseada em ambiente
-│   ├── controllers/     # Controllers HTTP (auth, user)
+│   ├── controllers/     # Controllers HTTP (auth, organization)
 │   ├── database/        # Conexão e migrações PostgreSQL
 │   ├── errors/          # Tratamento de erros RFC 7807
 │   ├── models/          # Domain models e DTOs
 │   ├── repositories/    # Data access layer
-│   └── services/        # Business logic (auth, user)
+│   └── services/        # Business logic (auth, organization)
 ├── tests/integration/   # Testes de integração
 ├── docs/               # Documentação Swagger gerada
 ├── bin/                # Binários compilados
@@ -208,34 +216,34 @@ curl -X POST http://localhost:8080/api/v1/auth/password-reset \
   }'
 ```
 
-### Usuários
+### Organizações
 
-#### Criar Usuário
+#### Criar Organização
 ```bash
-curl -X POST http://localhost:8080/api/v1/users \
+curl -X POST http://localhost:8080/api/v1/organizations \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -d '{
-    "username": "user@example.com",
-    "name": "João Silva",
-    "password": "password123",
-    "profile": {
-      "street": "Rua das Flores, 123",
-      "city": "São Paulo",
-      "district": "Centro",
-      "zip_code": "01234567",
-      "phone": "11987654321"
-    }
+    "name": "Minha Organização",
+    "description": "Descrição da organização"
   }'
 ```
 
-#### Buscar por Username
+#### Listar Organizações do Usuário
 ```bash
-curl http://localhost:8080/api/v1/users/username/user@example.com
+curl "http://localhost:8080/api/v1/organizations/my?page=1&limit=10" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
-#### Listar com Paginação e Ordenação
+#### Convidar Usuário para Organização
 ```bash
-curl "http://localhost:8080/api/v1/users?page=1&limit=10&sortBy=name&sortOrder=asc"
+curl -X POST http://localhost:8080/api/v1/organizations/{id}/invites \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -d '{
+    "email": "user@example.com",
+    "role": "user"
+  }'
 ```
 
 ## 🔍 Características Técnicas
@@ -273,7 +281,7 @@ Implementa RFC 7807 Problem Details para respostas de erro padronizadas:
   "title": "Validation Error",
   "status": 400,
   "detail": "username is required",
-  "instance": "/api/v1/users"
+  "instance": "/api/v1/organizations"
 }
 ```
 

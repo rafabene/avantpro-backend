@@ -46,7 +46,7 @@ The codebase follows a clean three-layer architecture pattern:
 
 **Interface-First Design**: All major components define interfaces that are implemented by concrete types. Repository and service interfaces are fully documented.
 
-**Domain Models vs DTOs**: Clear separation between internal domain models (`models.User`, `models.Profile`) and API request/response DTOs (`UserCreateRequest`, `UserResponse`).
+**Domain Models vs DTOs**: Clear separation between internal domain models (`models.User`, `models.Profile`, `models.Organization`) and API request/response DTOs for authentication and organizations.
 
 **Password Security**: All user passwords are automatically encrypted using bcrypt with GORM hooks. The `Password` field is never returned in API responses.
 
@@ -66,13 +66,13 @@ Uses RFC 7807 Problem Details for HTTP APIs via the `moogar0880/problems` librar
 
 ## API Features
 
-### User Management
-The API provides complete CRUD operations for users with the following features:
+### Organization Management
+The API provides complete organization management with the following features:
 
-- **User Creation**: Creates users with encrypted passwords and optional profile
-- **Find by Username**: Special endpoint to find users by username (email)
-- **Profile Management**: Users can have detailed address and contact information
-- **Soft Deletes**: Users are soft deleted using GORM's DeletedAt
+- **Organization CRUD**: Create, read, update, delete with proper permissions
+- **Member Management**: Add/remove members, role management (admin/user)
+- **Invitation System**: Email-based invitations with token acceptance
+- **Permission System**: Creator always admin, role-based access control
 
 ### Data Models
 - **User**: Contains username (email), name, encrypted password, and optional profile
@@ -90,26 +90,25 @@ List endpoints support sorting with query parameters:
 
 ### Example Usage
 ```
-# Create user with profile
-POST /api/v1/users
+# Create organization
+POST /api/v1/organizations
+Authorization: Bearer <JWT_TOKEN>
 {
-  "username": "user@example.com",
-  "name": "John Doe", 
-  "password": "password123",
-  "profile": {
-    "street": "123 Main St",
-    "city": "São Paulo",
-    "district": "Centro", 
-    "zip_code": "01234567",
-    "phone": "11987654321"
-  }
+  "name": "My Organization",
+  "description": "Organization description"
 }
 
-# Find by username
-GET /api/v1/users/username/user@example.com
+# Invite user to organization
+POST /api/v1/organizations/{id}/invites
+Authorization: Bearer <JWT_TOKEN>
+{
+  "email": "user@example.com",
+  "role": "user"
+}
 
-# List with sorting
-GET /api/v1/users?sortBy=name&sortOrder=asc&page=1&limit=10
+# List user organizations
+GET /api/v1/organizations/my?page=1&limit=10
+Authorization: Bearer <JWT_TOKEN>
 ```
 
 ### Configuration
@@ -145,7 +144,7 @@ Swagger/OpenAPI documentation generated automatically from code annotations usin
 - `internal/models/` - User and Profile domain models with encrypted password support
 - `internal/repositories/` - User repository with GetByUsername method
 - `internal/services/` - User service with comprehensive validation and business logic
-- `internal/controllers/` - User HTTP controllers with full CRUD and username lookup
+- `internal/controllers/` - HTTP controllers for auth and organization management
 - `tests/integration/` - Full API integration tests with testcontainers
 
 ### Environment Variables

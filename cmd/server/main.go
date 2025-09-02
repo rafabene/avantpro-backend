@@ -38,7 +38,10 @@ import (
 // @host localhost:8080
 // @BasePath /api/v1
 
-// @securityDefinitions.basic BasicAuth
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Type "Bearer" followed by a space and JWT token.
 
 func main() {
 	// Load environment variables in development
@@ -63,12 +66,10 @@ func main() {
 	orgRepo := repositories.NewOrganizationRepository(db)
 
 	// Initialize services
-	userService := services.NewUserService(userRepo)
 	emailService := services.NewEmailService()
 	orgService := services.NewOrganizationService(orgRepo, userRepo, emailService)
 
 	// Initialize controllers
-	userController := controllers.NewUserController(userService)
 	orgController := controllers.NewOrganizationController(orgService)
 	authService := services.NewAuthService(userRepo, cfg.JWT.Secret)
 	authController := controllers.NewAuthController(authService)
@@ -96,7 +97,7 @@ func main() {
 
 	// CORS middleware
 	config := cors.DefaultConfig()
-	config.AllowOrigins = []string{"http://localhost:4200", "http://localhost:4201"}
+	config.AllowOrigins = []string{"http://localhost:4200"}
 	config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
 	config.AllowHeaders = []string{"Origin", "Content-Type", "Accept", "Authorization"}
 	router.Use(cors.New(config))
@@ -132,16 +133,6 @@ func main() {
 			auth.POST("/password-reset/confirm", authController.ResetPassword)
 		}
 
-		// User routes
-		users := v1.Group("/users")
-		{
-			users.POST("", userController.CreateUser)
-			users.GET("", userController.ListUsers)
-			users.GET("/:id", userController.GetUser)
-			users.GET("/username/:username", userController.GetUserByUsername)
-			users.PUT("/:id", userController.UpdateUser)
-			users.DELETE("/:id", userController.DeleteUser)
-		}
 
 		// Organization routes (protected)
 		organizations := v1.Group("/organizations")
@@ -163,11 +154,11 @@ func main() {
 			// Organization Invites
 			organizations.POST("/:id/invites", orgController.InviteUser)
 			organizations.GET("/:id/invites", orgController.GetOrganizationInvites)
-			
+
 			// Invite Management (by ID)
 			organizations.POST("/invites/id/:inviteId/resend", orgController.ResendInvite)
 			organizations.DELETE("/invites/id/:inviteId", orgController.RevokeInvite)
-			
+
 			// Invite Acceptance (by token)
 			organizations.POST("/invites/token/:token/accept", orgController.AcceptInvite)
 		}

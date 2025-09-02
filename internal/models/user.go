@@ -36,42 +36,6 @@ type Profile struct {
 	DeletedAt gorm.DeletedAt `json:"-" gorm:"index"`
 }
 
-// UserCreateRequest represents the request body for creating a user
-// @Description User creation request
-type UserCreateRequest struct {
-	Username string                `json:"username" validate:"required,email" example:"user@example.com"`
-	Name     string                `json:"name" validate:"required,min=2,max=100" example:"John Doe"`
-	Password string                `json:"password" validate:"required,min=6" example:"password123"`
-	Profile  *ProfileCreateRequest `json:"profile,omitempty"`
-}
-
-// ProfileCreateRequest represents the request body for creating a profile
-// @Description Profile creation request
-type ProfileCreateRequest struct {
-	Street   string `json:"street" validate:"required,min=5,max=200" example:"123 Main Street"`
-	City     string `json:"city" validate:"required,min=2,max=100" example:"São Paulo"`
-	District string `json:"district" validate:"required,min=2,max=100" example:"Centro"`
-	ZipCode  string `json:"zip_code" validate:"required,len=8" example:"01234567"`
-	Phone    string `json:"phone" validate:"required,min=10,max=15" example:"11987654321"`
-}
-
-// UserUpdateRequest represents the request body for updating a user
-// @Description User update request
-type UserUpdateRequest struct {
-	Name     *string                `json:"name,omitempty" validate:"omitempty,min=2,max=100" example:"John Doe"`
-	Password *string                `json:"password,omitempty" validate:"omitempty,min=6" example:"newpassword123"`
-	Profile  *ProfileUpdateRequest  `json:"profile,omitempty"`
-}
-
-// ProfileUpdateRequest represents the request body for updating a profile
-// @Description Profile update request
-type ProfileUpdateRequest struct {
-	Street   *string `json:"street,omitempty" validate:"omitempty,min=5,max=200" example:"123 Main Street"`
-	City     *string `json:"city,omitempty" validate:"omitempty,min=2,max=100" example:"São Paulo"`
-	District *string `json:"district,omitempty" validate:"omitempty,min=2,max=100" example:"Centro"`
-	ZipCode  *string `json:"zip_code,omitempty" validate:"omitempty,len=8" example:"01234567"`
-	Phone    *string `json:"phone,omitempty" validate:"omitempty,min=10,max=15" example:"11987654321"`
-}
 
 // UserResponse represents the response body for user operations
 // @Description User response
@@ -97,14 +61,6 @@ type ProfileResponse struct {
 	UpdatedAt time.Time `json:"updated_at" example:"2023-01-01T12:00:00Z"`
 }
 
-// UserListResponse represents the response body for listing users
-// @Description User list response with pagination
-type UserListResponse struct {
-	Data  []UserResponse `json:"data"`
-	Total int64          `json:"total" example:"100"`
-	Limit int            `json:"limit" example:"50"`
-	Page  int            `json:"page" example:"1"`
-}
 
 // HashPassword hashes the user password using bcrypt
 func (u *User) HashPassword() error {
