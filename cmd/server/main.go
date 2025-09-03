@@ -133,7 +133,6 @@ func main() {
 			auth.POST("/password-reset/confirm", authController.ResetPassword)
 		}
 
-
 		// Organization routes (protected)
 		organizations := v1.Group("/organizations")
 		organizations.Use(middleware.AuthMiddleware(cfg.JWT.Secret))

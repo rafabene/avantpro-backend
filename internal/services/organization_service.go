@@ -222,8 +222,9 @@ type OrganizationService struct {
 // This constructor initializes the service with all required dependencies.
 // Parameters:
 //   - orgRepo: Repository interface for organization data operations
-//   - userRepo: Repository interface for user data operations  
+//   - userRepo: Repository interface for user data operations
 //   - emailService: Service interface for sending emails
+//
 // Returns:
 //   - OrganizationServiceInterface: Configured organization service ready for use
 func NewOrganizationService(orgRepo repositories.OrganizationRepositoryInterface, userRepo repositories.UserRepository, emailService EmailServiceInterface) OrganizationServiceInterface {
@@ -445,7 +446,6 @@ func (s *OrganizationService) InviteUser(orgID uuid.UUID, req *models.Organizati
 	if !s.isUserAdmin(org, inviterID) {
 		return nil, fmt.Errorf("insufficient permissions: only admins can send invitations")
 	}
-
 
 	// If user exists, check if they're already a member
 	existingUser, err := s.userRepo.GetByUsername(req.Email)
@@ -670,11 +670,11 @@ func (s *OrganizationService) ResendInvite(inviteID uuid.UUID, userID uuid.UUID)
 // This method determines admin status by checking two conditions:
 // 1. If the user is the original creator of the organization (always admin)
 // 2. If the user is a member with admin role assigned
-// 
+//
 // Parameters:
 //   - org: The organization to check admin status for
 //   - userID: UUID of the user to check
-// 
+//
 // Returns:
 //   - bool: true if user has admin privileges, false otherwise
 //

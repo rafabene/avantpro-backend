@@ -38,7 +38,6 @@ type DatabaseConfig struct {
 	SSLMode  string
 }
 
-
 func LoadConfig() *Config {
 	env := getEnvironment()
 
@@ -104,7 +103,7 @@ func getTrustedProxies() []string {
 	if proxies == "" {
 		return nil // No trusted proxies by default
 	}
-	
+
 	// Split comma-separated list
 	var result []string
 	for _, proxy := range strings.Split(proxies, ",") {

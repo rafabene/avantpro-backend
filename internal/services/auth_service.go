@@ -23,7 +23,7 @@ type AuthService interface {
 	//   - *models.LoginResponse: JWT token and user information
 	//   - error: Error if credentials are invalid or authentication fails
 	Login(req *models.LoginRequest) (*models.LoginResponse, error)
-	
+
 	// Register creates a new user account and automatically logs them in.
 	// This method validates user data, creates the account, and returns a JWT token.
 	// Parameters:
@@ -32,7 +32,7 @@ type AuthService interface {
 	//   - *models.LoginResponse: JWT token and user information
 	//   - error: Error if validation fails or user already exists
 	Register(req *models.RegisterRequest) (*models.LoginResponse, error)
-	
+
 	// RequestPasswordReset initiates the password reset process for a user.
 	// This method generates a reset token and sends a password reset email.
 	// Parameters:
@@ -40,7 +40,7 @@ type AuthService interface {
 	// Returns:
 	//   - error: Error if user not found or email sending fails
 	RequestPasswordReset(email string) error
-	
+
 	// ResetPassword completes the password reset process using a reset token.
 	// This method validates the reset token and updates the user's password.
 	// Parameters:
@@ -56,7 +56,7 @@ type AuthService interface {
 // registration, password management, and JWT token generation and validation.
 type authService struct {
 	userRepo  repositories.UserRepository // Repository for user data operations
-	jwtSecret string                       // Secret key for JWT token signing and validation
+	jwtSecret string                      // Secret key for JWT token signing and validation
 }
 
 // NewAuthService creates a new AuthService instance.
@@ -64,6 +64,7 @@ type authService struct {
 // Parameters:
 //   - userRepo: Repository interface for user data operations
 //   - jwtSecret: Secret key for JWT token signing (should be strong and secure)
+//
 // Returns:
 //   - AuthService: Configured authentication service ready for use
 func NewAuthService(userRepo repositories.UserRepository, jwtSecret string) AuthService {
@@ -167,7 +168,7 @@ func (s *authService) RequestPasswordReset(email string) error {
 	// 1. Generate a unique reset token
 	// 2. Store it in the database with expiration
 	// 3. Send an email with the reset link
-	
+
 	// For now, we'll just return success
 	return nil
 }

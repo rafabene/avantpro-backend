@@ -24,22 +24,22 @@ type ProblemDetail struct {
 // Common error types for the API
 const (
 	// Type URIs for different error categories
-	ValidationErrorType  = "https://avantpro-backend.com/errors/validation"
-	NotFoundErrorType    = "https://avantpro-backend.com/errors/not-found"
-	ConflictErrorType    = "https://avantpro-backend.com/errors/conflict"
-	InternalErrorType    = "https://avantpro-backend.com/errors/internal"
-	BadRequestErrorType  = "https://avantpro-backend.com/errors/bad-request"
+	ValidationErrorType   = "https://avantpro-backend.com/errors/validation"
+	NotFoundErrorType     = "https://avantpro-backend.com/errors/not-found"
+	ConflictErrorType     = "https://avantpro-backend.com/errors/conflict"
+	InternalErrorType     = "https://avantpro-backend.com/errors/internal"
+	BadRequestErrorType   = "https://avantpro-backend.com/errors/bad-request"
 	UnauthorizedErrorType = "https://avantpro-backend.com/errors/unauthorized"
-	ForbiddenErrorType   = "https://avantpro-backend.com/errors/forbidden"
-	GoneErrorType        = "https://avantpro-backend.com/errors/gone"
+	ForbiddenErrorType    = "https://avantpro-backend.com/errors/forbidden"
+	GoneErrorType         = "https://avantpro-backend.com/errors/gone"
 )
 
 // Common error messages
 const (
 	ErrUsernameAlreadyExists = "username already exists"
-	ErrUserNotFound         = "user not found"
-	ErrInvalidCredentials   = "invalid credentials"
-	ErrWeakPassword        = "password must be at least 6 characters long"
+	ErrUserNotFound          = "user not found"
+	ErrInvalidCredentials    = "invalid credentials"
+	ErrWeakPassword          = "password must be at least 6 characters long"
 )
 
 // ValidationError creates a validation error problem

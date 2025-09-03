@@ -45,6 +45,7 @@ func MigrateToUUID(db *gorm.DB) error {
 
 		if err := tx.Exec("TRUNCATE TABLE profiles RESTART IDENTITY CASCADE").Error; err != nil {
 			// Ignore error if profiles table doesn't exist
+			_ = err
 		}
 
 		// Step 2: Drop the old tables completely

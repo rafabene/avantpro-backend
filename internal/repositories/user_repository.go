@@ -11,19 +11,19 @@ import (
 type UserRepository interface {
 	// Create inserts a new user into the database
 	Create(user *models.User) error
-	
+
 	// GetByID retrieves a user by their unique identifier
 	GetByID(id uuid.UUID) (*models.User, error)
-	
+
 	// GetByUsername retrieves a user by their username (email)
 	GetByUsername(username string) (*models.User, error)
-	
+
 	// List retrieves a paginated list of users with total count and sorting
 	List(limit, offset int, sortBy, sortOrder string) ([]models.User, int64, error)
-	
+
 	// Update modifies an existing user in the database
 	Update(user *models.User) error
-	
+
 	// Delete removes a user from the database (soft delete)
 	Delete(id uuid.UUID) error
 }

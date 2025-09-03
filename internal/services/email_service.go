@@ -66,14 +66,15 @@ func NewEmailService() EmailServiceInterface {
 // Parameters:
 //   - invite: Organization invitation model containing all necessary data
 //   - baseURL: Base application URL for generating the acceptance link
+//
 // Returns:
 //   - error: Error if email composition or sending fails
 func (s *EmailService) SendOrganizationInvite(invite *models.OrganizationInvite, baseURL string) error {
 	// For now, we'll just log the email content
 	// In production, you would use a proper email service like SendGrid, AWS SES, etc.
-	
+
 	inviteURL := fmt.Sprintf("%s/organizations/invites/%s/accept", baseURL, invite.Token)
-	
+
 	emailContent := fmt.Sprintf(`
 Subject: Invitation to join %s
 
@@ -90,7 +91,7 @@ If you didn't expect this invitation, you can safely ignore this email.
 
 Best regards,
 The AvantPro Team
-	`, 
+	`,
 		invite.Organization.Name,
 		invite.Email,
 		invite.Organization.Name,
@@ -101,6 +102,6 @@ The AvantPro Team
 
 	// TODO: In production, replace this with actual email sending
 	log.Printf("EMAIL TO SEND:\n%s", emailContent)
-	
+
 	return nil
 }

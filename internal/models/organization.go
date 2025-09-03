@@ -18,16 +18,16 @@ const (
 // Organization represents an organization entity
 // @Description Organization information
 type Organization struct {
-	ID          uuid.UUID      `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()" example:"550e8400-e29b-41d4-a716-446655440000"`
-	Name        string         `json:"name" gorm:"not null" validate:"required,min=2,max=100" example:"My Company"`
-	Description string         `json:"description" gorm:"type:text" validate:"max=500" example:"A great company"`
-	CreatedBy   uuid.UUID      `json:"created_by" gorm:"type:uuid;not null" example:"550e8400-e29b-41d4-a716-446655440001"`
-	Creator     User           `json:"creator,omitempty" gorm:"foreignKey:CreatedBy;constraint:OnUpdate:CASCADE,OnDelete:RESTRICT"`
+	ID          uuid.UUID            `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()" example:"550e8400-e29b-41d4-a716-446655440000"`
+	Name        string               `json:"name" gorm:"not null" validate:"required,min=2,max=100" example:"My Company"`
+	Description string               `json:"description" gorm:"type:text" validate:"max=500" example:"A great company"`
+	CreatedBy   uuid.UUID            `json:"created_by" gorm:"type:uuid;not null" example:"550e8400-e29b-41d4-a716-446655440001"`
+	Creator     User                 `json:"creator,omitempty" gorm:"foreignKey:CreatedBy;constraint:OnUpdate:CASCADE,OnDelete:RESTRICT"`
 	Members     []OrganizationMember `json:"members,omitempty" gorm:"foreignKey:OrganizationID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
 	Invites     []OrganizationInvite `json:"invites,omitempty" gorm:"foreignKey:OrganizationID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
-	CreatedAt   time.Time      `json:"created_at" example:"2023-01-01T12:00:00Z"`
-	UpdatedAt   time.Time      `json:"updated_at" example:"2023-01-01T12:00:00Z"`
-	DeletedAt   gorm.DeletedAt `json:"-" gorm:"index"`
+	CreatedAt   time.Time            `json:"created_at" example:"2023-01-01T12:00:00Z"`
+	UpdatedAt   time.Time            `json:"updated_at" example:"2023-01-01T12:00:00Z"`
+	DeletedAt   gorm.DeletedAt       `json:"-" gorm:"index"`
 }
 
 // OrganizationMember represents a member of an organization
@@ -104,15 +104,15 @@ type OrganizationMemberUpdateRequest struct {
 // OrganizationResponse represents the response body for organization operations
 // @Description Organization response
 type OrganizationResponse struct {
-	ID          uuid.UUID                      `json:"id" example:"550e8400-e29b-41d4-a716-446655440000"`
-	Name        string                         `json:"name" example:"My Company"`
-	Description string                         `json:"description" example:"A great company"`
-	CreatedBy   uuid.UUID                      `json:"created_by" example:"550e8400-e29b-41d4-a716-446655440001"`
-	Creator     *UserResponse                  `json:"creator,omitempty"`
-	Members     []OrganizationMemberResponse   `json:"members,omitempty"`
-	Invites     []OrganizationInviteResponse   `json:"invites,omitempty"`
-	CreatedAt   time.Time                      `json:"created_at" example:"2023-01-01T12:00:00Z"`
-	UpdatedAt   time.Time                      `json:"updated_at" example:"2023-01-01T12:00:00Z"`
+	ID          uuid.UUID                    `json:"id" example:"550e8400-e29b-41d4-a716-446655440000"`
+	Name        string                       `json:"name" example:"My Company"`
+	Description string                       `json:"description" example:"A great company"`
+	CreatedBy   uuid.UUID                    `json:"created_by" example:"550e8400-e29b-41d4-a716-446655440001"`
+	Creator     *UserResponse                `json:"creator,omitempty"`
+	Members     []OrganizationMemberResponse `json:"members,omitempty"`
+	Invites     []OrganizationInviteResponse `json:"invites,omitempty"`
+	CreatedAt   time.Time                    `json:"created_at" example:"2023-01-01T12:00:00Z"`
+	UpdatedAt   time.Time                    `json:"updated_at" example:"2023-01-01T12:00:00Z"`
 }
 
 // OrganizationMemberResponse represents the response body for organization member operations

@@ -70,7 +70,7 @@ func (r *OrganizationRepository) GetByID(id uuid.UUID) (*models.Organization, er
 		Preload("Invites").
 		Preload("Invites.Inviter").
 		First(&org, "id = ?", id).Error
-	
+
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -165,7 +165,7 @@ func (r *OrganizationRepository) GetMember(orgID, userID uuid.UUID) (*models.Org
 	err := r.db.Preload("User").
 		Preload("Organization").
 		First(&member, "organization_id = ? AND user_id = ?", orgID, userID).Error
-	
+
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -247,10 +247,10 @@ func (r *OrganizationRepository) CreateInvite(invite *models.OrganizationInvite)
 		return err
 	}
 	invite.Token = token
-	
+
 	// Set expiration (7 days from now)
 	invite.ExpiresAt = time.Now().Add(7 * 24 * time.Hour)
-	
+
 	return r.db.Create(invite).Error
 }
 
@@ -260,7 +260,7 @@ func (r *OrganizationRepository) GetInviteByToken(token string) (*models.Organiz
 	err := r.db.Preload("Organization").
 		Preload("Inviter").
 		First(&invite, "token = ?", token).Error
-	
+
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -276,7 +276,7 @@ func (r *OrganizationRepository) GetInviteByID(id uuid.UUID) (*models.Organizati
 	err := r.db.Preload("Organization").
 		Preload("Inviter").
 		First(&invite, "id = ?", id).Error
-	
+
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -315,9 +315,9 @@ func (r *OrganizationRepository) GetInvites(orgID uuid.UUID, limit, offset int, 
 // GetPendingInviteByEmail retrieves a pending invitation by email for an organization
 func (r *OrganizationRepository) GetPendingInviteByEmail(orgID uuid.UUID, email string) (*models.OrganizationInvite, error) {
 	var invite models.OrganizationInvite
-	err := r.db.First(&invite, "organization_id = ? AND email = ? AND status = ?", 
+	err := r.db.First(&invite, "organization_id = ? AND email = ? AND status = ?",
 		orgID, email, models.InviteStatusPending).Error
-	
+
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -351,11 +351,11 @@ func (r *OrganizationRepository) RegenerateInviteToken(invite *models.Organizati
 	if err != nil {
 		return err
 	}
-	
+
 	// Set new token and extend expiration (7 days from now)
 	invite.Token = token
 	invite.ExpiresAt = time.Now().Add(7 * 24 * time.Hour)
-	
+
 	// Update only token and expiry fields
 	return r.db.Model(invite).Select("token", "expires_at", "updated_at").Updates(invite).Error
 }
@@ -366,7 +366,7 @@ func (r *OrganizationRepository) RegenerateInviteToken(invite *models.Organizati
 func (r *OrganizationRepository) buildOrderClause(sortBy, sortOrder, tableName string) string {
 	// Allowed fields for sorting per table
 	allowedFields := map[string][]string{
-		"organizations": {"name", "created_at", "updated_at"},
+		"organizations":        {"name", "created_at", "updated_at"},
 		"organization_members": {"joined_at", "created_at", "updated_at", "role"},
 		"organization_invites": {"email", "status", "created_at", "updated_at", "expires_at"},
 	}

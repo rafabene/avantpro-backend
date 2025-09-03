@@ -24,18 +24,17 @@ type User struct {
 // Profile represents a user profile with address information
 // @Description User profile with address and contact information
 type Profile struct {
-	ID       uuid.UUID      `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()" example:"550e8400-e29b-41d4-a716-446655440001"`
-	UserID   uuid.UUID      `json:"user_id" gorm:"type:uuid;not null;uniqueIndex" example:"550e8400-e29b-41d4-a716-446655440000"`
-	Street   string         `json:"street" gorm:"not null" validate:"required,min=5,max=200" example:"123 Main Street"`
-	City     string         `json:"city" gorm:"not null" validate:"required,min=2,max=100" example:"São Paulo"`
-	District string         `json:"district" gorm:"not null" validate:"required,min=2,max=100" example:"Centro"`
-	ZipCode  string         `json:"zip_code" gorm:"not null" validate:"required,len=8" example:"01234567"`
-	Phone    string         `json:"phone" gorm:"not null" validate:"required,min=10,max=15" example:"11987654321"`
-	CreatedAt time.Time     `json:"created_at" example:"2023-01-01T12:00:00Z"`
-	UpdatedAt time.Time     `json:"updated_at" example:"2023-01-01T12:00:00Z"`
+	ID        uuid.UUID      `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()" example:"550e8400-e29b-41d4-a716-446655440001"`
+	UserID    uuid.UUID      `json:"user_id" gorm:"type:uuid;not null;uniqueIndex" example:"550e8400-e29b-41d4-a716-446655440000"`
+	Street    string         `json:"street" gorm:"not null" validate:"required,min=5,max=200" example:"123 Main Street"`
+	City      string         `json:"city" gorm:"not null" validate:"required,min=2,max=100" example:"São Paulo"`
+	District  string         `json:"district" gorm:"not null" validate:"required,min=2,max=100" example:"Centro"`
+	ZipCode   string         `json:"zip_code" gorm:"not null" validate:"required,len=8" example:"01234567"`
+	Phone     string         `json:"phone" gorm:"not null" validate:"required,min=10,max=15" example:"11987654321"`
+	CreatedAt time.Time      `json:"created_at" example:"2023-01-01T12:00:00Z"`
+	UpdatedAt time.Time      `json:"updated_at" example:"2023-01-01T12:00:00Z"`
 	DeletedAt gorm.DeletedAt `json:"-" gorm:"index"`
 }
-
 
 // UserResponse represents the response body for user operations
 // @Description User response
@@ -51,16 +50,15 @@ type UserResponse struct {
 // ProfileResponse represents the response body for profile operations
 // @Description Profile response
 type ProfileResponse struct {
-	ID       uuid.UUID `json:"id" example:"550e8400-e29b-41d4-a716-446655440001"`
-	Street   string    `json:"street" example:"123 Main Street"`
-	City     string    `json:"city" example:"São Paulo"`
-	District string    `json:"district" example:"Centro"`
-	ZipCode  string    `json:"zip_code" example:"01234567"`
-	Phone    string    `json:"phone" example:"11987654321"`
+	ID        uuid.UUID `json:"id" example:"550e8400-e29b-41d4-a716-446655440001"`
+	Street    string    `json:"street" example:"123 Main Street"`
+	City      string    `json:"city" example:"São Paulo"`
+	District  string    `json:"district" example:"Centro"`
+	ZipCode   string    `json:"zip_code" example:"01234567"`
+	Phone     string    `json:"phone" example:"11987654321"`
 	CreatedAt time.Time `json:"created_at" example:"2023-01-01T12:00:00Z"`
 	UpdatedAt time.Time `json:"updated_at" example:"2023-01-01T12:00:00Z"`
 }
-
 
 // HashPassword hashes the user password using bcrypt
 func (u *User) HashPassword() error {

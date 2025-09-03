@@ -20,6 +20,7 @@ type Worker struct {
 // NewWorker creates a new worker instance with the provided dependencies.
 // Parameters:
 //   - orgRepo: Repository interface for organization operations
+//
 // Returns:
 //   - *Worker: Configured worker ready to start background tasks
 func NewWorker(orgRepo repositories.OrganizationRepositoryInterface) *Worker {
@@ -36,14 +37,14 @@ func NewWorker(orgRepo repositories.OrganizationRepositoryInterface) *Worker {
 // The tasks will continue running until Stop() is called.
 func (w *Worker) Start() {
 	log.Println("🔧 Starting maintenance worker...")
-	
+
 	// Start invitation expiry task (runs every hour)
 	go w.runPeriodicTask("Expire Invitations", 1*time.Hour, w.expireInvitations)
-	
+
 	// Future tasks can be added here:
 	// go w.runPeriodicTask("Clean Old Logs", 24*time.Hour, w.cleanOldLogs)
 	// go w.runPeriodicTask("Update Statistics", 6*time.Hour, w.updateStatistics)
-	
+
 	log.Println("✅ Maintenance worker started successfully")
 }
 
@@ -63,14 +64,14 @@ func (w *Worker) Stop() {
 func (w *Worker) runPeriodicTask(taskName string, interval time.Duration, taskFunc func() error) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
-	
+
 	// Run the task immediately on startup
 	if err := taskFunc(); err != nil {
 		log.Printf("❌ Error in %s: %v", taskName, err)
 	} else {
 		log.Printf("✅ %s completed successfully", taskName)
 	}
-	
+
 	for {
 		select {
 		case <-w.ctx.Done():
@@ -93,12 +94,12 @@ func (w *Worker) expireInvitations() error {
 	defer func() {
 		log.Printf("⏱️  Expire invitations task took %v", time.Since(start))
 	}()
-	
+
 	err := w.orgRepo.ExpireInvites()
 	if err != nil {
 		return fmt.Errorf("failed to expire invitations: %w", err)
 	}
-	
+
 	return nil
 }
 

@@ -101,7 +101,7 @@ func GetUserIDFromContext(c *gin.Context) (string, bool) {
 	if !exists {
 		return "", false
 	}
-	
+
 	userIDStr, ok := userID.(string)
 	return userIDStr, ok
 }
