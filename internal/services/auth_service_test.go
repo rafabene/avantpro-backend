@@ -55,11 +55,50 @@ func (m *MockUserRepository) Delete(id uuid.UUID) error {
 	return args.Error(0)
 }
 
+func (m *MockUserRepository) UpdateLastSelectedOrganization(userID uuid.UUID, organizationID *uuid.UUID) error {
+	args := m.Called(userID, organizationID)
+	return args.Error(0)
+}
+
+// MockPasswordResetRepository is a mock implementation of PasswordResetRepository
+type MockPasswordResetRepository struct {
+	mock.Mock
+}
+
+func (m *MockPasswordResetRepository) Create(token *models.PasswordResetToken) error {
+	args := m.Called(token)
+	return args.Error(0)
+}
+
+func (m *MockPasswordResetRepository) GetByToken(token string) (*models.PasswordResetToken, error) {
+	args := m.Called(token)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.PasswordResetToken), args.Error(1)
+}
+
+func (m *MockPasswordResetRepository) Update(token *models.PasswordResetToken) error {
+	args := m.Called(token)
+	return args.Error(0)
+}
+
+func (m *MockPasswordResetRepository) DeleteExpiredTokens() error {
+	args := m.Called()
+	return args.Error(0)
+}
+
+func (m *MockPasswordResetRepository) DeleteUserTokens(userID uuid.UUID) error {
+	args := m.Called(userID)
+	return args.Error(0)
+}
+
 func TestNewAuthService(t *testing.T) {
-	mockRepo := &MockUserRepository{}
+	mockUserRepo := &MockUserRepository{}
+	mockPasswordResetRepo := &MockPasswordResetRepository{}
 	secret := "test-secret"
 
-	service := NewAuthService(mockRepo, secret)
+	service := NewAuthService(mockUserRepo, mockPasswordResetRepo, secret)
 
 	assert.NotNil(t, service)
 	assert.IsType(t, &authService{}, service)
@@ -68,7 +107,7 @@ func TestNewAuthService(t *testing.T) {
 func TestAuthService_Login_Success(t *testing.T) {
 	mockRepo := &MockUserRepository{}
 	secret := "test-secret"
-	service := NewAuthService(mockRepo, secret)
+	service := NewAuthService(mockRepo, &MockPasswordResetRepository{}, secret)
 
 	userID := uuid.New()
 	user := &models.User{
@@ -125,7 +164,7 @@ func TestAuthService_Login_Success(t *testing.T) {
 func TestAuthService_Login_UserNotFound(t *testing.T) {
 	mockRepo := &MockUserRepository{}
 	secret := "test-secret"
-	service := NewAuthService(mockRepo, secret)
+	service := NewAuthService(mockRepo, &MockPasswordResetRepository{}, secret)
 
 	mockRepo.On("GetByUsername", "nonexistent@example.com").Return(nil, errors.New("user not found"))
 
@@ -146,7 +185,7 @@ func TestAuthService_Login_UserNotFound(t *testing.T) {
 func TestAuthService_Login_WrongPassword(t *testing.T) {
 	mockRepo := &MockUserRepository{}
 	secret := "test-secret"
-	service := NewAuthService(mockRepo, secret)
+	service := NewAuthService(mockRepo, &MockPasswordResetRepository{}, secret)
 
 	userID := uuid.New()
 	user := &models.User{
@@ -177,7 +216,7 @@ func TestAuthService_Login_WrongPassword(t *testing.T) {
 func TestAuthService_Register_Success(t *testing.T) {
 	mockRepo := &MockUserRepository{}
 	secret := "test-secret"
-	service := NewAuthService(mockRepo, secret)
+	service := NewAuthService(mockRepo, &MockPasswordResetRepository{}, secret)
 
 	mockRepo.On("GetByUsername", "new@example.com").Return(nil, errors.New("user not found"))
 	mockRepo.On("Create", mock.AnythingOfType("*models.User")).Return(nil).Run(func(args mock.Arguments) {
@@ -207,7 +246,7 @@ func TestAuthService_Register_Success(t *testing.T) {
 func TestAuthService_Register_UserAlreadyExists(t *testing.T) {
 	mockRepo := &MockUserRepository{}
 	secret := "test-secret"
-	service := NewAuthService(mockRepo, secret)
+	service := NewAuthService(mockRepo, &MockPasswordResetRepository{}, secret)
 
 	existingUser := &models.User{
 		ID:       uuid.New(),
@@ -235,7 +274,7 @@ func TestAuthService_Register_UserAlreadyExists(t *testing.T) {
 func TestAuthService_Register_CreateError(t *testing.T) {
 	mockRepo := &MockUserRepository{}
 	secret := "test-secret"
-	service := NewAuthService(mockRepo, secret)
+	service := NewAuthService(mockRepo, &MockPasswordResetRepository{}, secret)
 
 	mockRepo.On("GetByUsername", "new@example.com").Return(nil, errors.New("user not found"))
 	mockRepo.On("Create", mock.AnythingOfType("*models.User")).Return(errors.New("database error"))
@@ -256,9 +295,10 @@ func TestAuthService_Register_CreateError(t *testing.T) {
 }
 
 func TestAuthService_RequestPasswordReset_Success(t *testing.T) {
-	mockRepo := &MockUserRepository{}
+	mockUserRepo := &MockUserRepository{}
+	mockPasswordResetRepo := &MockPasswordResetRepository{}
 	secret := "test-secret"
-	service := NewAuthService(mockRepo, secret)
+	service := NewAuthService(mockUserRepo, mockPasswordResetRepo, secret)
 
 	user := &models.User{
 		ID:       uuid.New(),
@@ -266,18 +306,21 @@ func TestAuthService_RequestPasswordReset_Success(t *testing.T) {
 		Name:     "Test User",
 	}
 
-	mockRepo.On("GetByUsername", "test@example.com").Return(user, nil)
+	mockUserRepo.On("GetByUsername", "test@example.com").Return(user, nil)
+	mockPasswordResetRepo.On("DeleteUserTokens", user.ID).Return(nil)
+	mockPasswordResetRepo.On("Create", mock.AnythingOfType("*models.PasswordResetToken")).Return(nil)
 
 	err := service.RequestPasswordReset("test@example.com")
 
 	assert.NoError(t, err)
-	mockRepo.AssertExpectations(t)
+	mockUserRepo.AssertExpectations(t)
+	mockPasswordResetRepo.AssertExpectations(t)
 }
 
 func TestAuthService_RequestPasswordReset_UserNotFound(t *testing.T) {
 	mockRepo := &MockUserRepository{}
 	secret := "test-secret"
-	service := NewAuthService(mockRepo, secret)
+	service := NewAuthService(mockRepo, &MockPasswordResetRepository{}, secret)
 
 	mockRepo.On("GetByUsername", "nonexistent@example.com").Return(nil, errors.New("user not found"))
 
@@ -289,19 +332,43 @@ func TestAuthService_RequestPasswordReset_UserNotFound(t *testing.T) {
 }
 
 func TestAuthService_ResetPassword_Success(t *testing.T) {
-	mockRepo := &MockUserRepository{}
+	mockUserRepo := &MockUserRepository{}
+	mockPasswordResetRepo := &MockPasswordResetRepository{}
 	secret := "test-secret"
-	service := NewAuthService(mockRepo, secret)
+	service := NewAuthService(mockUserRepo, mockPasswordResetRepo, secret)
+
+	userID := uuid.New()
+	user := &models.User{
+		ID:       userID,
+		Username: "test@example.com",
+		Name:     "Test User",
+		Password: "oldpassword",
+	}
+
+	validToken := &models.PasswordResetToken{
+		ID:        uuid.New(),
+		UserID:    userID,
+		Token:     "valid-token",
+		ExpiresAt: time.Now().Add(time.Hour),
+		UsedAt:    nil,
+	}
+
+	mockPasswordResetRepo.On("GetByToken", "valid-token").Return(validToken, nil)
+	mockUserRepo.On("GetByID", userID).Return(user, nil)
+	mockUserRepo.On("Update", mock.AnythingOfType("*models.User")).Return(nil)
+	mockPasswordResetRepo.On("Update", mock.AnythingOfType("*models.PasswordResetToken")).Return(nil)
 
 	err := service.ResetPassword("valid-token", "newpassword123")
 
 	assert.NoError(t, err)
+	mockUserRepo.AssertExpectations(t)
+	mockPasswordResetRepo.AssertExpectations(t)
 }
 
 func TestAuthService_ResetPassword_EmptyToken(t *testing.T) {
 	mockRepo := &MockUserRepository{}
 	secret := "test-secret"
-	service := NewAuthService(mockRepo, secret)
+	service := NewAuthService(mockRepo, &MockPasswordResetRepository{}, secret)
 
 	err := service.ResetPassword("", "newpassword123")
 
@@ -312,7 +379,7 @@ func TestAuthService_ResetPassword_EmptyToken(t *testing.T) {
 func TestAuthService_GenerateJWT(t *testing.T) {
 	mockRepo := &MockUserRepository{}
 	secret := "test-secret"
-	service := NewAuthService(mockRepo, secret).(*authService)
+	service := NewAuthService(mockRepo, &MockPasswordResetRepository{}, secret).(*authService)
 
 	userID := uuid.New()
 

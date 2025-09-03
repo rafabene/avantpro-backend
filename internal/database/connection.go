@@ -71,6 +71,9 @@ func runMigrations(db *gorm.DB) error {
 		&models.Organization{},
 		&models.OrganizationMember{},
 		&models.OrganizationInvite{},
+		&models.Notification{},
+		&models.NotificationPreference{},
+		&models.PasswordResetToken{},
 	)
 }
 

@@ -20,6 +20,16 @@ type EmailServiceInterface interface {
 	// Returns:
 	//   - error: Error if email sending fails
 	SendOrganizationInvite(invite *models.OrganizationInvite, baseURL string) error
+
+	// SendPasswordResetEmail sends a password reset email to a user.
+	// The email contains a unique reset link that allows the user to reset their password.
+	// Parameters:
+	//   - email: The email address of the user requesting password reset
+	//   - resetToken: The unique token for password reset
+	//   - baseURL: The base URL of the application for generating the reset link
+	// Returns:
+	//   - error: Error if email sending fails
+	SendPasswordResetEmail(email, resetToken, baseURL string) error
 }
 
 // EmailService implements the email service interface.
@@ -101,7 +111,64 @@ The AvantPro Team
 	)
 
 	// TODO: In production, replace this with actual email sending
-	log.Printf("EMAIL TO SEND:\n%s", emailContent)
+	log.Printf("\n\n====== ORGANIZATION INVITE EMAIL ======")
+	log.Printf("To: %s", invite.Email)
+	log.Printf("Subject: Invitation to join %s", invite.Organization.Name)
+	log.Printf("Content:\n%s", emailContent)
+	log.Printf("========================================\n")
+
+	return nil
+}
+
+// SendPasswordResetEmail sends a password reset email to a user.
+// This method creates and sends a password reset email containing:
+//   - Instructions for resetting the password
+//   - Unique reset link with token
+//   - Security notice about password reset request
+//
+// Currently this method logs the email content instead of sending actual emails.
+// In production, this should be replaced with actual email delivery logic.
+//
+// Parameters:
+//   - email: Email address of the user requesting password reset
+//   - resetToken: Unique token for password reset verification
+//   - baseURL: Base application URL for generating the reset link
+//
+// Returns:
+//   - error: Error if email composition or sending fails
+func (s *EmailService) SendPasswordResetEmail(email, resetToken, baseURL string) error {
+	// Generate password reset URL
+	resetURL := fmt.Sprintf("%s/auth/password-reset/confirm?token=%s", baseURL, resetToken)
+
+	emailContent := fmt.Sprintf(`
+Subject: Password Reset Request
+
+Dear user,
+
+You have requested to reset your password for your AvantPro account.
+
+To reset your password, please click on the following link:
+%s
+
+This link will expire in 1 hour for security reasons.
+
+If you didn't request this password reset, please ignore this email. Your password will remain unchanged.
+
+For security reasons, please do not share this link with anyone.
+
+Best regards,
+The AvantPro Team
+	`,
+		resetURL,
+	)
+
+	// TODO: In production, replace this with actual email sending
+	log.Printf("\n\n====== PASSWORD RESET EMAIL ======")
+	log.Printf("To: %s", email)
+	log.Printf("Subject: Password Reset Request")
+	log.Printf("Content:\n%s", emailContent)
+	log.Printf("Reset Token: %s", resetToken)
+	log.Printf("===================================\n")
 
 	return nil
 }

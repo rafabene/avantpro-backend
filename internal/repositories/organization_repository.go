@@ -100,6 +100,8 @@ func (r *OrganizationRepository) GetByCreator(creatorID uuid.UUID, limit, offset
 	err := query.Preload("Creator").
 		Preload("Members").
 		Preload("Members.User").
+		Preload("Invites").
+		Preload("Invites.Inviter").
 		Limit(limit).
 		Offset(offset).
 		Find(&orgs).Error
@@ -137,6 +139,8 @@ func (r *OrganizationRepository) List(limit, offset int, sortBy, sortOrder strin
 	err := query.Preload("Creator").
 		Preload("Members").
 		Preload("Members.User").
+		Preload("Invites").
+		Preload("Invites.Inviter").
 		Limit(limit).
 		Offset(offset).
 		Find(&orgs).Error
@@ -159,10 +163,10 @@ func (r *OrganizationRepository) AddMember(member *models.OrganizationMember) er
 	return nil
 }
 
-// GetMember retrieves a specific organization member
+// GetMember retrieves a specific organization member (including soft deleted)
 func (r *OrganizationRepository) GetMember(orgID, userID uuid.UUID) (*models.OrganizationMember, error) {
 	var member models.OrganizationMember
-	err := r.db.Preload("User").
+	err := r.db.Unscoped().Preload("User").
 		Preload("Organization").
 		First(&member, "organization_id = ? AND user_id = ?", orgID, userID).Error
 
@@ -203,7 +207,7 @@ func (r *OrganizationRepository) GetMembers(orgID uuid.UUID, limit, offset int, 
 
 // UpdateMember updates an organization member
 func (r *OrganizationRepository) UpdateMember(member *models.OrganizationMember) error {
-	return r.db.Save(member).Error
+	return r.db.Unscoped().Select("role", "joined_at", "deleted_at", "updated_at").Save(member).Error
 }
 
 // RemoveMember removes a user from an organization

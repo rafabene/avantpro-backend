@@ -1,7 +1,10 @@
 package services
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
+	"log"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -49,28 +52,40 @@ type AuthService interface {
 	// Returns:
 	//   - error: Error if token is invalid, expired, or password update fails
 	ResetPassword(token, newPassword string) error
+
+	// UpdateLastSelectedOrganization updates the user's last selected organization preference.
+	// This method allows users to save their organization preference for automatic selection on login.
+	// Parameters:
+	//   - userID: UUID of the user
+	//   - organizationID: UUID of the organization to set as preferred (nil to clear preference)
+	// Returns:
+	//   - error: Error if user not found or update fails
+	UpdateLastSelectedOrganization(userID uuid.UUID, organizationID *uuid.UUID) error
 }
 
 // authService implements AuthService interface.
 // It provides authentication and authorization services including user login,
 // registration, password management, and JWT token generation and validation.
 type authService struct {
-	userRepo  repositories.UserRepository // Repository for user data operations
-	jwtSecret string                      // Secret key for JWT token signing and validation
+	userRepo          repositories.UserRepository          // Repository for user data operations
+	passwordResetRepo repositories.PasswordResetRepository // Repository for password reset token operations
+	jwtSecret         string                               // Secret key for JWT token signing and validation
 }
 
 // NewAuthService creates a new AuthService instance.
 // This constructor initializes the authentication service with required dependencies.
 // Parameters:
 //   - userRepo: Repository interface for user data operations
+//   - passwordResetRepo: Repository interface for password reset token operations
 //   - jwtSecret: Secret key for JWT token signing (should be strong and secure)
 //
 // Returns:
 //   - AuthService: Configured authentication service ready for use
-func NewAuthService(userRepo repositories.UserRepository, jwtSecret string) AuthService {
+func NewAuthService(userRepo repositories.UserRepository, passwordResetRepo repositories.PasswordResetRepository, jwtSecret string) AuthService {
 	return &authService{
-		userRepo:  userRepo,
-		jwtSecret: jwtSecret,
+		userRepo:          userRepo,
+		passwordResetRepo: passwordResetRepo,
+		jwtSecret:         jwtSecret,
 	}
 }
 
@@ -91,11 +106,12 @@ func (s *authService) Login(req *models.LoginRequest) (*models.LoginResponse, er
 	}
 
 	userResponse := models.UserResponse{
-		ID:        user.ID,
-		Username:  user.Username,
-		Name:      user.Name,
-		CreatedAt: user.CreatedAt,
-		UpdatedAt: user.UpdatedAt,
+		ID:                         user.ID,
+		Username:                   user.Username,
+		Name:                       user.Name,
+		LastSelectedOrganizationID: user.LastSelectedOrganizationID,
+		CreatedAt:                  user.CreatedAt,
+		UpdatedAt:                  user.UpdatedAt,
 	}
 
 	if user.Profile != nil {
@@ -144,11 +160,12 @@ func (s *authService) Register(req *models.RegisterRequest) (*models.LoginRespon
 	}
 
 	userResponse := models.UserResponse{
-		ID:        user.ID,
-		Username:  user.Username,
-		Name:      user.Name,
-		CreatedAt: user.CreatedAt,
-		UpdatedAt: user.UpdatedAt,
+		ID:                         user.ID,
+		Username:                   user.Username,
+		Name:                       user.Name,
+		LastSelectedOrganizationID: user.LastSelectedOrganizationID,
+		CreatedAt:                  user.CreatedAt,
+		UpdatedAt:                  user.UpdatedAt,
 	}
 
 	return &models.LoginResponse{
@@ -157,37 +174,123 @@ func (s *authService) Register(req *models.RegisterRequest) (*models.LoginRespon
 	}, nil
 }
 
-// RequestPasswordReset sends a password reset token (simplified implementation)
+// RequestPasswordReset sends a password reset token
 func (s *authService) RequestPasswordReset(email string) error {
-	_, err := s.userRepo.GetByUsername(email)
+	user, err := s.userRepo.GetByUsername(email)
 	if err != nil {
 		return errors.New("user not found")
 	}
 
-	// In a real implementation, you would:
-	// 1. Generate a unique reset token
-	// 2. Store it in the database with expiration
-	// 3. Send an email with the reset link
+	// Delete any existing tokens for this user
+	if err := s.passwordResetRepo.DeleteUserTokens(user.ID); err != nil {
+		log.Printf("Error deleting existing tokens for user %s: %v", user.ID, err)
+	}
 
-	// For now, we'll just return success
+	// Generate a unique reset token
+	resetToken := s.generateResetToken()
+
+	// Create token record with 1 hour expiration
+	tokenRecord := &models.PasswordResetToken{
+		UserID:    user.ID,
+		Token:     resetToken,
+		ExpiresAt: time.Now().Add(time.Hour),
+	}
+
+	// Store the token in database
+	if err := s.passwordResetRepo.Create(tokenRecord); err != nil {
+		log.Printf("Error creating password reset token: %v", err)
+		return err
+	}
+	log.Printf("Password reset token created successfully in database")
+
+	// Log the password reset request (simulating email sending)
+	log.Printf("\n\n====== PASSWORD RESET REQUEST ======")
+	log.Printf("User Email: %s", email)
+	log.Printf("Reset Token: %s", resetToken)
+	log.Printf("Reset URL: http://localhost:4200/auth/password-reset/confirm?token=%s", resetToken)
+	log.Printf("Token expires at: %s", tokenRecord.ExpiresAt.Format("2006-01-02 15:04:05"))
+	log.Printf("====================================\n")
+
 	return nil
 }
 
-// ResetPassword resets user password using a token (simplified implementation)
+// ResetPassword resets user password using a token
 func (s *authService) ResetPassword(token, newPassword string) error {
-	// In a real implementation, you would:
-	// 1. Validate the reset token
-	// 2. Check if it's not expired
-	// 3. Find the user associated with the token
-	// 4. Update the user's password
-	// 5. Invalidate the token
-
-	// For now, we'll just return success for any token
 	if token == "" {
 		return errors.New("invalid or expired token")
 	}
 
+	// Get the token from database
+	log.Printf("Searching for reset token: %s", token)
+	resetToken, err := s.passwordResetRepo.GetByToken(token)
+	if err != nil {
+		log.Printf("Error getting reset token: %v", err)
+		return err
+	}
+	if resetToken == nil {
+		log.Printf("Reset token not found in database")
+		return errors.New("invalid or expired token")
+	}
+	log.Printf("Reset token found, UserID: %s, ExpiresAt: %s", resetToken.UserID, resetToken.ExpiresAt)
+
+	// Validate the token
+	if !resetToken.IsValid() {
+		if resetToken.IsExpired() {
+			return errors.New("token has expired")
+		}
+		if resetToken.IsUsed() {
+			return errors.New("token has already been used")
+		}
+		return errors.New("invalid token")
+	}
+
+	// Get the user
+	user, err := s.userRepo.GetByID(resetToken.UserID)
+	if err != nil {
+		return err
+	}
+	if user == nil {
+		return errors.New("user not found")
+	}
+
+	// Update the user's password
+	user.Password = newPassword
+	// Manually hash the password before updating
+	if err := user.HashPassword(); err != nil {
+		log.Printf("Error hashing new password: %v", err)
+		return err
+	}
+	log.Printf("Password hashed successfully for user: %s", user.Username)
+
+	if err := s.userRepo.Update(user); err != nil {
+		log.Printf("Error updating user password: %v", err)
+		return err
+	}
+
+	// Mark the token as used
+	resetToken.MarkAsUsed()
+	if err := s.passwordResetRepo.Update(resetToken); err != nil {
+		log.Printf("Error marking token as used: %v", err)
+		// Don't fail the operation if we can't mark the token as used
+	}
+
+	log.Printf("Password successfully reset for user: %s", user.Username)
 	return nil
+}
+
+// UpdateLastSelectedOrganization updates the user's last selected organization preference
+func (s *authService) UpdateLastSelectedOrganization(userID uuid.UUID, organizationID *uuid.UUID) error {
+	return s.userRepo.UpdateLastSelectedOrganization(userID, organizationID)
+}
+
+// generateResetToken generates a secure random token for password reset
+func (s *authService) generateResetToken() string {
+	bytes := make([]byte, 32)
+	if _, err := rand.Read(bytes); err != nil {
+		// Fallback to timestamp-based token if crypto/rand fails
+		return hex.EncodeToString([]byte(time.Now().Format("20060102150405") + "resettoken"))
+	}
+	return hex.EncodeToString(bytes)
 }
 
 // generateJWT creates a JWT token for the user

@@ -20,6 +20,7 @@ import (
 	"github.com/rafabene/avantpro-backend/internal/middleware"
 	"github.com/rafabene/avantpro-backend/internal/repositories"
 	"github.com/rafabene/avantpro-backend/internal/services"
+	"github.com/rafabene/avantpro-backend/internal/websocket"
 	"github.com/rafabene/avantpro-backend/internal/worker"
 )
 
@@ -64,15 +65,26 @@ func main() {
 	// Initialize repositories
 	userRepo := repositories.NewUserRepository(db)
 	orgRepo := repositories.NewOrganizationRepository(db)
+	notificationRepo := repositories.NewNotificationRepository(db)
+	notificationPrefRepo := repositories.NewNotificationPreferenceRepository(db)
+	passwordResetRepo := repositories.NewPasswordResetRepository(db)
+
+	// Initialize WebSocket hub
+	wsHub := websocket.NewHub()
+	go wsHub.Run()
 
 	// Initialize services
 	emailService := services.NewEmailService()
-	orgService := services.NewOrganizationService(orgRepo, userRepo, emailService)
+	notificationService := services.NewNotificationService(notificationRepo, orgRepo, userRepo, wsHub)
+	notificationPrefService := services.NewNotificationPreferenceService(notificationPrefRepo, notificationRepo, userRepo, notificationService)
+	orgService := services.NewOrganizationService(orgRepo, userRepo, emailService, notificationService)
 
 	// Initialize controllers
 	orgController := controllers.NewOrganizationController(orgService)
-	authService := services.NewAuthService(userRepo, cfg.JWT.Secret)
+	authService := services.NewAuthService(userRepo, passwordResetRepo, cfg.JWT.Secret)
 	authController := controllers.NewAuthController(authService)
+	notificationController := controllers.NewNotificationController(notificationService)
+	notificationPrefController := controllers.NewNotificationPreferenceController(notificationPrefService)
 
 	// Initialize and start worker for periodic maintenance tasks
 	maintenanceWorker := worker.NewWorker(orgRepo)
@@ -97,9 +109,9 @@ func main() {
 
 	// CORS middleware
 	config := cors.DefaultConfig()
-	config.AllowOrigins = []string{"http://localhost:4200"}
+	config.AllowOrigins = []string{"http://localhost:4200", "http://localhost:4201"}
 	config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
-	config.AllowHeaders = []string{"Origin", "Content-Type", "Accept", "Authorization"}
+	config.AllowHeaders = []string{"Origin", "Content-Type", "Accept", "Authorization", "User-ID"}
 	router.Use(cors.New(config))
 
 	// Configure trusted proxies
@@ -131,6 +143,20 @@ func main() {
 			auth.POST("/register", authController.Register)
 			auth.POST("/password-reset", authController.RequestPasswordReset)
 			auth.POST("/password-reset/confirm", authController.ResetPassword)
+
+			// Protected auth routes
+			authProtected := auth.Group("")
+			authProtected.Use(middleware.AuthMiddleware(cfg.JWT.Secret))
+			{
+				authProtected.PUT("/last-selected-organization", authController.UpdateLastSelectedOrganization)
+			}
+		}
+
+		// Public organization routes (no authentication required)
+		publicOrganizations := v1.Group("/organizations")
+		{
+			// Invite Validation (public)
+			publicOrganizations.GET("/invites/token/:token/validate", orgController.ValidateInvite)
 		}
 
 		// Organization routes (protected)
@@ -160,6 +186,29 @@ func main() {
 
 			// Invite Acceptance (by token)
 			organizations.POST("/invites/token/:token/accept", orgController.AcceptInvite)
+
+			// Organization-scoped Notification routes
+			orgNotifications := organizations.Group("/:id/notifications")
+			{
+				orgNotifications.GET("", notificationController.GetUserNotifications)
+				orgNotifications.GET("/unread", notificationController.GetUnreadNotifications)
+				orgNotifications.GET("/unread-count", notificationController.GetUnreadCount)
+				orgNotifications.PUT("/mark-all-read", notificationController.MarkAllAsRead)
+				orgNotifications.PUT("/:notifId/read", notificationController.MarkAsRead)
+				orgNotifications.DELETE("", notificationController.DeleteAllNotifications)
+				orgNotifications.DELETE("/:notifId", notificationController.DeleteNotification)
+			}
+
+			// Organization-scoped Notification preference routes
+			orgNotificationPrefs := organizations.Group("/:id/notification-preferences")
+			{
+				orgNotificationPrefs.GET("", notificationPrefController.GetUserPreferences)
+				orgNotificationPrefs.PUT("", notificationPrefController.UpdateUserPreferences)
+				orgNotificationPrefs.PUT("/:event", notificationPrefController.UpdateSinglePreference)
+				orgNotificationPrefs.POST("/reset", notificationPrefController.ResetToDefaults)
+				orgNotificationPrefs.GET("/events", notificationPrefController.GetAvailableEvents)
+				orgNotificationPrefs.POST("/test", notificationPrefController.GenerateTestNotification)
+			}
 		}
 	}
 

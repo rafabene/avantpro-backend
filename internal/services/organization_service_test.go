@@ -147,12 +147,70 @@ func (m *MockEmailService) SendOrganizationInvite(invite *models.OrganizationInv
 	return args.Error(0)
 }
 
+func (m *MockEmailService) SendPasswordResetEmail(email, resetToken, baseURL string) error {
+	args := m.Called(email, resetToken, baseURL)
+	return args.Error(0)
+}
+
+// MockNotificationService is a mock implementation of NotificationService
+type MockNotificationService struct {
+	mock.Mock
+}
+
+func (m *MockNotificationService) CreateNotification(req *models.CreateNotificationRequest) (*models.NotificationResponse, error) {
+	args := m.Called(req)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.NotificationResponse), args.Error(1)
+}
+
+func (m *MockNotificationService) NotifyMemberJoined(organizationID uuid.UUID, newMemberName string, newMemberID uuid.UUID) error {
+	args := m.Called(organizationID, newMemberName, newMemberID)
+	return args.Error(0)
+}
+
+func (m *MockNotificationService) GetUserNotifications(userID uuid.UUID, organizationID *uuid.UUID, limit, offset int, sortBy, sortOrder string) ([]models.NotificationResponse, int64, error) {
+	args := m.Called(userID, organizationID, limit, offset, sortBy, sortOrder)
+	return args.Get(0).([]models.NotificationResponse), args.Get(1).(int64), args.Error(2)
+}
+
+func (m *MockNotificationService) GetUnreadNotifications(userID uuid.UUID, organizationID *uuid.UUID) ([]models.NotificationResponse, error) {
+	args := m.Called(userID, organizationID)
+	return args.Get(0).([]models.NotificationResponse), args.Error(1)
+}
+
+func (m *MockNotificationService) GetUnreadCount(userID uuid.UUID, organizationID *uuid.UUID) (int64, error) {
+	args := m.Called(userID, organizationID)
+	return args.Get(0).(int64), args.Error(1)
+}
+
+func (m *MockNotificationService) MarkAsRead(notificationID, userID uuid.UUID) error {
+	args := m.Called(notificationID, userID)
+	return args.Error(0)
+}
+
+func (m *MockNotificationService) MarkAllAsRead(userID uuid.UUID) error {
+	args := m.Called(userID)
+	return args.Error(0)
+}
+
+func (m *MockNotificationService) DeleteNotification(notificationID, userID uuid.UUID) error {
+	args := m.Called(notificationID, userID)
+	return args.Error(0)
+}
+
+func (m *MockNotificationService) DeleteAllNotifications(userID uuid.UUID) error {
+	args := m.Called(userID)
+	return args.Error(0)
+}
+
 func TestNewOrganizationService(t *testing.T) {
 	mockOrgRepo := &MockOrganizationRepository{}
 	mockUserRepo := &MockUserRepository{}
 	mockEmailService := &MockEmailService{}
 
-	service := NewOrganizationService(mockOrgRepo, mockUserRepo, mockEmailService)
+	service := NewOrganizationService(mockOrgRepo, mockUserRepo, mockEmailService, &MockNotificationService{})
 
 	assert.NotNil(t, service)
 	assert.IsType(t, &OrganizationService{}, service)
@@ -162,7 +220,7 @@ func TestOrganizationService_CreateOrganization_Success(t *testing.T) {
 	mockOrgRepo := &MockOrganizationRepository{}
 	mockUserRepo := &MockUserRepository{}
 	mockEmailService := &MockEmailService{}
-	service := NewOrganizationService(mockOrgRepo, mockUserRepo, mockEmailService)
+	service := NewOrganizationService(mockOrgRepo, mockUserRepo, mockEmailService, &MockNotificationService{})
 
 	creatorID := uuid.New()
 	orgID := uuid.New()
@@ -209,7 +267,7 @@ func TestOrganizationService_CreateOrganization_CreatorNotFound(t *testing.T) {
 	mockOrgRepo := &MockOrganizationRepository{}
 	mockUserRepo := &MockUserRepository{}
 	mockEmailService := &MockEmailService{}
-	service := NewOrganizationService(mockOrgRepo, mockUserRepo, mockEmailService)
+	service := NewOrganizationService(mockOrgRepo, mockUserRepo, mockEmailService, &MockNotificationService{})
 
 	creatorID := uuid.New()
 
@@ -233,7 +291,7 @@ func TestOrganizationService_GetOrganization_Success(t *testing.T) {
 	mockOrgRepo := &MockOrganizationRepository{}
 	mockUserRepo := &MockUserRepository{}
 	mockEmailService := &MockEmailService{}
-	service := NewOrganizationService(mockOrgRepo, mockUserRepo, mockEmailService)
+	service := NewOrganizationService(mockOrgRepo, mockUserRepo, mockEmailService, &MockNotificationService{})
 
 	orgID := uuid.New()
 	org := &models.Organization{
@@ -257,7 +315,7 @@ func TestOrganizationService_UpdateOrganization_Success(t *testing.T) {
 	mockOrgRepo := &MockOrganizationRepository{}
 	mockUserRepo := &MockUserRepository{}
 	mockEmailService := &MockEmailService{}
-	service := NewOrganizationService(mockOrgRepo, mockUserRepo, mockEmailService)
+	service := NewOrganizationService(mockOrgRepo, mockUserRepo, mockEmailService, &MockNotificationService{})
 
 	orgID := uuid.New()
 	creatorID := uuid.New()
@@ -301,7 +359,7 @@ func TestOrganizationService_UpdateOrganization_InsufficientPermissions(t *testi
 	mockOrgRepo := &MockOrganizationRepository{}
 	mockUserRepo := &MockUserRepository{}
 	mockEmailService := &MockEmailService{}
-	service := NewOrganizationService(mockOrgRepo, mockUserRepo, mockEmailService)
+	service := NewOrganizationService(mockOrgRepo, mockUserRepo, mockEmailService, &MockNotificationService{})
 
 	orgID := uuid.New()
 	creatorID := uuid.New()
@@ -333,7 +391,7 @@ func TestOrganizationService_DeleteOrganization_Success(t *testing.T) {
 	mockOrgRepo := &MockOrganizationRepository{}
 	mockUserRepo := &MockUserRepository{}
 	mockEmailService := &MockEmailService{}
-	service := NewOrganizationService(mockOrgRepo, mockUserRepo, mockEmailService)
+	service := NewOrganizationService(mockOrgRepo, mockUserRepo, mockEmailService, &MockNotificationService{})
 
 	orgID := uuid.New()
 	creatorID := uuid.New()
@@ -358,7 +416,7 @@ func TestOrganizationService_DeleteOrganization_NotCreator(t *testing.T) {
 	mockOrgRepo := &MockOrganizationRepository{}
 	mockUserRepo := &MockUserRepository{}
 	mockEmailService := &MockEmailService{}
-	service := NewOrganizationService(mockOrgRepo, mockUserRepo, mockEmailService)
+	service := NewOrganizationService(mockOrgRepo, mockUserRepo, mockEmailService, &MockNotificationService{})
 
 	orgID := uuid.New()
 	creatorID := uuid.New()
@@ -384,7 +442,7 @@ func TestOrganizationService_InviteUser_Success(t *testing.T) {
 	mockOrgRepo := &MockOrganizationRepository{}
 	mockUserRepo := &MockUserRepository{}
 	mockEmailService := &MockEmailService{}
-	service := NewOrganizationService(mockOrgRepo, mockUserRepo, mockEmailService)
+	service := NewOrganizationService(mockOrgRepo, mockUserRepo, mockEmailService, &MockNotificationService{})
 
 	orgID := uuid.New()
 	inviterID := uuid.New()
@@ -419,7 +477,7 @@ func TestOrganizationService_InviteUser_Success(t *testing.T) {
 		inv.ID = inviteID
 	})
 	mockOrgRepo.On("GetInviteByID", inviteID).Return(invite, nil)
-	mockEmailService.On("SendOrganizationInvite", invite, "http://localhost:4201").Return(nil)
+	mockEmailService.On("SendOrganizationInvite", invite, "http://localhost:4200").Return(nil)
 
 	result, err := service.InviteUser(orgID, req, inviterID)
 
@@ -437,7 +495,7 @@ func TestOrganizationService_InviteUser_UserAlreadyMember(t *testing.T) {
 	mockOrgRepo := &MockOrganizationRepository{}
 	mockUserRepo := &MockUserRepository{}
 	mockEmailService := &MockEmailService{}
-	service := NewOrganizationService(mockOrgRepo, mockUserRepo, mockEmailService)
+	service := NewOrganizationService(mockOrgRepo, mockUserRepo, mockEmailService, &MockNotificationService{})
 
 	orgID := uuid.New()
 	inviterID := uuid.New()
@@ -483,7 +541,8 @@ func TestOrganizationService_AcceptInvite_Success(t *testing.T) {
 	mockOrgRepo := &MockOrganizationRepository{}
 	mockUserRepo := &MockUserRepository{}
 	mockEmailService := &MockEmailService{}
-	service := NewOrganizationService(mockOrgRepo, mockUserRepo, mockEmailService)
+	mockNotificationService := &MockNotificationService{}
+	service := NewOrganizationService(mockOrgRepo, mockUserRepo, mockEmailService, mockNotificationService)
 
 	userID := uuid.New()
 	orgID := uuid.New()
@@ -517,6 +576,7 @@ func TestOrganizationService_AcceptInvite_Success(t *testing.T) {
 	mockOrgRepo.On("AddMember", mock.AnythingOfType("*models.OrganizationMember")).Return(nil)
 	mockOrgRepo.On("UpdateInvite", mock.AnythingOfType("*models.OrganizationInvite")).Return(nil)
 	mockOrgRepo.On("GetMember", orgID, userID).Return(member, nil).Once()
+	mockNotificationService.On("NotifyMemberJoined", orgID, user.Name, userID).Return(nil)
 
 	result, err := service.AcceptInvite(token, userID)
 
@@ -528,13 +588,14 @@ func TestOrganizationService_AcceptInvite_Success(t *testing.T) {
 
 	mockOrgRepo.AssertExpectations(t)
 	mockUserRepo.AssertExpectations(t)
+	mockNotificationService.AssertExpectations(t)
 }
 
 func TestOrganizationService_AcceptInvite_EmailMismatch(t *testing.T) {
 	mockOrgRepo := &MockOrganizationRepository{}
 	mockUserRepo := &MockUserRepository{}
 	mockEmailService := &MockEmailService{}
-	service := NewOrganizationService(mockOrgRepo, mockUserRepo, mockEmailService)
+	service := NewOrganizationService(mockOrgRepo, mockUserRepo, mockEmailService, &MockNotificationService{})
 
 	userID := uuid.New()
 	token := "valid-token"
@@ -568,7 +629,7 @@ func TestOrganizationService_IsUserAdmin(t *testing.T) {
 	mockOrgRepo := &MockOrganizationRepository{}
 	mockUserRepo := &MockUserRepository{}
 	mockEmailService := &MockEmailService{}
-	service := NewOrganizationService(mockOrgRepo, mockUserRepo, mockEmailService).(*OrganizationService)
+	service := NewOrganizationService(mockOrgRepo, mockUserRepo, mockEmailService, &MockNotificationService{}).(*OrganizationService)
 
 	orgID := uuid.New()
 	creatorID := uuid.New()

@@ -71,20 +71,6 @@ type OrganizationServiceInterface interface {
 	//   - error: Error if user lacks permissions or deletion fails
 	DeleteOrganization(id uuid.UUID, userID uuid.UUID) error
 
-	// ListOrganizations retrieves all organizations (admin function).
-	// This is typically used for administrative purposes.
-	// Results are paginated and sortable.
-	// Parameters:
-	//   - limit: Maximum number of results to return
-	//   - offset: Number of results to skip (for pagination)
-	//   - sortBy: Field to sort by (name, created_at, updated_at)
-	//   - sortOrder: Sort direction (asc, desc)
-	// Returns:
-	//   - []models.Organization: List of organizations
-	//   - int64: Total count of organizations (for pagination)
-	//   - error: Error if query fails
-	ListOrganizations(limit, offset int, sortBy, sortOrder string) ([]models.Organization, int64, error)
-
 	// Organization Member Management
 
 	// GetOrganizationMembers retrieves all members of an organization.
@@ -185,6 +171,14 @@ type OrganizationServiceInterface interface {
 	//   - error: Error if token invalid, expired, or email mismatch
 	AcceptInvite(token string, userID uuid.UUID) (*models.OrganizationMember, error)
 
+	// ValidateInvite validates an organization invitation and checks if the invited user exists.
+	// This method does not require authentication and can be used to determine
+	// whether a user should be redirected to login or registration.
+	// Returns:
+	//   - map[string]interface{}: Contains validation results and user existence info
+	//   - error: Error if invitation is invalid, expired, or not found
+	ValidateInvite(token string) (map[string]interface{}, error)
+
 	// RevokeInvite cancels a pending organization invitation.
 	// Only admin members can revoke invitations.
 	// This prevents the invitation from being accepted and marks it as revoked.
@@ -213,9 +207,10 @@ type OrganizationServiceInterface interface {
 // the organization repository, user repository, and email service to provide
 // complete organization functionality with proper permission checks.
 type OrganizationService struct {
-	orgRepo      repositories.OrganizationRepositoryInterface // Repository for organization data operations
-	userRepo     repositories.UserRepository                  // Repository for user data operations
-	emailService EmailServiceInterface                        // Service for sending email notifications
+	orgRepo             repositories.OrganizationRepositoryInterface // Repository for organization data operations
+	userRepo            repositories.UserRepository                  // Repository for user data operations
+	emailService        EmailServiceInterface                        // Service for sending email notifications
+	notificationService NotificationService                          // Service for managing notifications
 }
 
 // NewOrganizationService creates a new instance of OrganizationService.
@@ -227,11 +222,12 @@ type OrganizationService struct {
 //
 // Returns:
 //   - OrganizationServiceInterface: Configured organization service ready for use
-func NewOrganizationService(orgRepo repositories.OrganizationRepositoryInterface, userRepo repositories.UserRepository, emailService EmailServiceInterface) OrganizationServiceInterface {
+func NewOrganizationService(orgRepo repositories.OrganizationRepositoryInterface, userRepo repositories.UserRepository, emailService EmailServiceInterface, notificationService NotificationService) OrganizationServiceInterface {
 	return &OrganizationService{
-		orgRepo:      orgRepo,
-		userRepo:     userRepo,
-		emailService: emailService,
+		orgRepo:             orgRepo,
+		userRepo:            userRepo,
+		emailService:        emailService,
+		notificationService: notificationService,
 	}
 }
 
@@ -329,11 +325,6 @@ func (s *OrganizationService) DeleteOrganization(id uuid.UUID, userID uuid.UUID)
 	}
 
 	return s.orgRepo.Delete(id)
-}
-
-// ListOrganizations retrieves all organizations (admin function)
-func (s *OrganizationService) ListOrganizations(limit, offset int, sortBy, sortOrder string) ([]models.Organization, int64, error) {
-	return s.orgRepo.List(limit, offset, sortBy, sortOrder)
 }
 
 // Organization Members Methods
@@ -457,7 +448,7 @@ func (s *OrganizationService) InviteUser(orgID uuid.UUID, req *models.Organizati
 		if err != nil {
 			return nil, fmt.Errorf("failed to check existing membership: %w", err)
 		}
-		if existingMember != nil {
+		if existingMember != nil && existingMember.DeletedAt.Time.IsZero() {
 			return nil, fmt.Errorf("user is already a member of this organization")
 		}
 	}
@@ -491,7 +482,7 @@ func (s *OrganizationService) InviteUser(orgID uuid.UUID, req *models.Organizati
 	}
 
 	// Send email invitation
-	baseURL := "http://localhost:4201" // TODO: Get from config
+	baseURL := "http://localhost:4200" // TODO: Get from config
 	if err := s.emailService.SendOrganizationInvite(fullInvite, baseURL); err != nil {
 		// Don't fail the entire operation if email fails, just log it
 		fmt.Printf("Failed to send invitation email: %v\n", err)
@@ -552,24 +543,36 @@ func (s *OrganizationService) AcceptInvite(token string, userID uuid.UUID) (*mod
 		return nil, fmt.Errorf("invitation email does not match user email")
 	}
 
-	// Check if user is already a member
+	// Check if user is already a member (including soft deleted)
 	existingMember, err := s.orgRepo.GetMember(invite.OrganizationID, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check existing membership: %w", err)
 	}
+
+	var member *models.OrganizationMember
 	if existingMember != nil {
-		return nil, fmt.Errorf("user is already a member of this organization")
-	}
+		// If member exists but is not soft deleted, they're already active
+		if existingMember.DeletedAt.Time.IsZero() {
+			return nil, fmt.Errorf("user is already a member of this organization")
+		}
 
-	// Create membership
-	member := &models.OrganizationMember{
-		OrganizationID: invite.OrganizationID,
-		UserID:         userID,
-		Role:           invite.Role,
-	}
-
-	if err := s.orgRepo.AddMember(member); err != nil {
-		return nil, fmt.Errorf("failed to add member: %w", err)
+		// If member was soft deleted, restore them with new role
+		existingMember.Role = invite.Role
+		existingMember.DeletedAt = gorm.DeletedAt{}
+		existingMember.JoinedAt = time.Now()
+		if err := s.orgRepo.UpdateMember(existingMember); err != nil {
+			return nil, fmt.Errorf("failed to restore member: %w", err)
+		}
+	} else {
+		// Create new membership
+		member = &models.OrganizationMember{
+			OrganizationID: invite.OrganizationID,
+			UserID:         userID,
+			Role:           invite.Role,
+		}
+		if err := s.orgRepo.AddMember(member); err != nil {
+			return nil, fmt.Errorf("failed to add member: %w", err)
+		}
 	}
 
 	// Update invitation status
@@ -580,7 +583,53 @@ func (s *OrganizationService) AcceptInvite(token string, userID uuid.UUID) (*mod
 		return nil, fmt.Errorf("failed to update invitation status: %w", err)
 	}
 
+	// Notify organization admins about the new member
+	if err := s.notificationService.NotifyMemberJoined(invite.OrganizationID, user.Name, userID); err != nil {
+		// Log the error but don't fail the invitation acceptance
+		// Notification failure should not block the main operation
+		fmt.Printf("Warning: Failed to notify admins about new member: %v\n", err)
+	}
+
 	return s.orgRepo.GetMember(invite.OrganizationID, userID)
+}
+
+// ValidateInvite validates an organization invitation
+func (s *OrganizationService) ValidateInvite(token string) (map[string]interface{}, error) {
+	// Get invitation by token
+	invite, err := s.orgRepo.GetInviteByToken(token)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get invitation: %w", err)
+	}
+	if invite == nil {
+		return nil, fmt.Errorf("invitation not found")
+	}
+
+	// Check if invitation is still valid
+	if invite.Status != models.InviteStatusPending {
+		return nil, fmt.Errorf("invitation is no longer valid")
+	}
+	if invite.IsExpired() {
+		return nil, fmt.Errorf("invitation has expired")
+	}
+
+	// Check if user exists
+	user, err := s.userRepo.GetByUsername(invite.Email)
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, fmt.Errorf("failed to check user existence: %w", err)
+	}
+
+	result := map[string]interface{}{
+		"valid":      true,
+		"email":      invite.Email,
+		"userExists": user != nil,
+		"organization": map[string]interface{}{
+			"id":   invite.OrganizationID,
+			"name": invite.Organization.Name,
+		},
+		"role": invite.Role,
+	}
+
+	return result, nil
 }
 
 // RevokeInvite revokes an organization invitation (only admin can revoke)
@@ -655,7 +704,7 @@ func (s *OrganizationService) ResendInvite(inviteID uuid.UUID, userID uuid.UUID)
 	}
 
 	// Send email invitation
-	baseURL := "http://localhost:4201" // TODO: Get from config
+	baseURL := "http://localhost:4200" // TODO: Get from config
 	if err := s.emailService.SendOrganizationInvite(fullInvite, baseURL); err != nil {
 		// Don't fail the entire operation if email fails, just log it
 		fmt.Printf("Failed to resend invitation email: %v\n", err)

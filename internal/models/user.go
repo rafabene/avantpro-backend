@@ -11,14 +11,15 @@ import (
 // User represents a user entity
 // @Description User information
 type User struct {
-	ID        uuid.UUID      `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()" example:"550e8400-e29b-41d4-a716-446655440000"`
-	Username  string         `json:"username" gorm:"uniqueIndex;not null" validate:"required,email" example:"user@example.com"`
-	Name      string         `json:"name" gorm:"not null" validate:"required,min=2,max=100" example:"John Doe"`
-	Password  string         `json:"-" gorm:"not null" validate:"required,min=6"`
-	Profile   *Profile       `json:"profile,omitempty" gorm:"foreignKey:UserID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
-	CreatedAt time.Time      `json:"created_at" example:"2023-01-01T12:00:00Z"`
-	UpdatedAt time.Time      `json:"updated_at" example:"2023-01-01T12:00:00Z"`
-	DeletedAt gorm.DeletedAt `json:"-" gorm:"index"`
+	ID                         uuid.UUID      `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()" example:"550e8400-e29b-41d4-a716-446655440000"`
+	Username                   string         `json:"username" gorm:"uniqueIndex;not null" validate:"required,email" example:"user@example.com"`
+	Name                       string         `json:"name" gorm:"not null" validate:"required,min=2,max=100" example:"John Doe"`
+	Password                   string         `json:"-" gorm:"not null" validate:"required,min=6"`
+	LastSelectedOrganizationID *uuid.UUID     `json:"last_selected_organization_id,omitempty" gorm:"type:uuid" example:"550e8400-e29b-41d4-a716-446655440002"`
+	Profile                    *Profile       `json:"profile,omitempty" gorm:"foreignKey:UserID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
+	CreatedAt                  time.Time      `json:"created_at" example:"2023-01-01T12:00:00Z"`
+	UpdatedAt                  time.Time      `json:"updated_at" example:"2023-01-01T12:00:00Z"`
+	DeletedAt                  gorm.DeletedAt `json:"-" gorm:"index"`
 }
 
 // Profile represents a user profile with address information
@@ -39,12 +40,13 @@ type Profile struct {
 // UserResponse represents the response body for user operations
 // @Description User response
 type UserResponse struct {
-	ID        uuid.UUID        `json:"id" example:"550e8400-e29b-41d4-a716-446655440000"`
-	Username  string           `json:"username" example:"user@example.com"`
-	Name      string           `json:"name" example:"John Doe"`
-	Profile   *ProfileResponse `json:"profile,omitempty"`
-	CreatedAt time.Time        `json:"created_at" example:"2023-01-01T12:00:00Z"`
-	UpdatedAt time.Time        `json:"updated_at" example:"2023-01-01T12:00:00Z"`
+	ID                         uuid.UUID        `json:"id" example:"550e8400-e29b-41d4-a716-446655440000"`
+	Username                   string           `json:"username" example:"user@example.com"`
+	Name                       string           `json:"name" example:"John Doe"`
+	LastSelectedOrganizationID *uuid.UUID       `json:"last_selected_organization_id,omitempty" example:"550e8400-e29b-41d4-a716-446655440002"`
+	Profile                    *ProfileResponse `json:"profile,omitempty"`
+	CreatedAt                  time.Time        `json:"created_at" example:"2023-01-01T12:00:00Z"`
+	UpdatedAt                  time.Time        `json:"updated_at" example:"2023-01-01T12:00:00Z"`
 }
 
 // ProfileResponse represents the response body for profile operations
@@ -129,4 +131,10 @@ type PasswordResetConfirmRequest struct {
 // @Description Simple message response
 type MessageResponse struct {
 	Message string `json:"message" example:"Operation completed successfully"`
+}
+
+// UpdateLastSelectedOrganizationRequest represents the request body for updating last selected organization
+// @Description Update last selected organization request
+type UpdateLastSelectedOrganizationRequest struct {
+	OrganizationID *uuid.UUID `json:"organization_id" example:"550e8400-e29b-41d4-a716-446655440002"`
 }

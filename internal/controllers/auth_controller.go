@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 
 	"github.com/rafabene/avantpro-backend/internal/errors"
 	"github.com/rafabene/avantpro-backend/internal/models"
@@ -165,5 +166,54 @@ func (c *AuthController) ResetPassword(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, models.MessageResponse{
 		Message: "Password reset successfully",
+	})
+}
+
+// UpdateLastSelectedOrganization updates user's last selected organization preference
+// @Summary Update last selected organization
+// @Description Update user's last selected organization preference
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param organization body models.UpdateLastSelectedOrganizationRequest true "Organization preference data"
+// @Success 200 {object} models.MessageResponse
+// @Failure 400 {object} object{type=string,title=string,status=int,detail=string,instance=string} "Bad Request"
+// @Failure 401 {object} object{type=string,title=string,status=int,detail=string,instance=string} "Unauthorized"
+// @Failure 500 {object} object{type=string,title=string,status=int,detail=string,instance=string} "Internal Server Error"
+// @Router /api/v1/auth/last-selected-organization [put]
+// @Security Bearer
+func (c *AuthController) UpdateLastSelectedOrganization(ctx *gin.Context) {
+	var req models.UpdateLastSelectedOrganizationRequest
+
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		prob := errors.BadRequestError("Invalid JSON format: "+err.Error(), errors.GetInstance(ctx))
+		errors.RespondWithProblem(ctx, prob)
+		return
+	}
+
+	// Get user ID from context (set by JWT middleware)
+	userIDStr, exists := ctx.Get("user_id")
+	if !exists {
+		prob := errors.UnauthorizedError("User not authenticated", errors.GetInstance(ctx))
+		errors.RespondWithProblem(ctx, prob)
+		return
+	}
+
+	userID, err := uuid.Parse(userIDStr.(string))
+	if err != nil {
+		prob := errors.BadRequestError("Invalid user ID", errors.GetInstance(ctx))
+		errors.RespondWithProblem(ctx, prob)
+		return
+	}
+
+	err = c.authService.UpdateLastSelectedOrganization(userID, req.OrganizationID)
+	if err != nil {
+		prob := errors.InternalError(errors.GetInstance(ctx))
+		errors.RespondWithProblem(ctx, prob)
+		return
+	}
+
+	ctx.JSON(http.StatusOK, models.MessageResponse{
+		Message: "Last selected organization updated successfully",
 	})
 }

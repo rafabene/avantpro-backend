@@ -60,6 +60,67 @@ definitions:
         example: Operation completed successfully
         type: string
     type: object
+  models.NotificationEvent:
+    enum:
+    - member_joined
+    - member_left
+    - member_role_changed
+    - invitation_sent
+    - invitation_accepted
+    - invitation_expired
+    - organization_update
+    type: string
+    x-enum-varnames:
+    - NotificationEventMemberJoined
+    - NotificationEventMemberLeft
+    - NotificationEventMemberRoleChanged
+    - NotificationEventInvitationSent
+    - NotificationEventInvitationAccepted
+    - NotificationEventInvitationExpired
+    - NotificationEventOrganizationUpdate
+  models.NotificationPreferenceBulkItem:
+    description: Single notification preference item for bulk update
+    properties:
+      enabled:
+        example: true
+        type: boolean
+      event:
+        allOf:
+        - $ref: '#/definitions/models.NotificationEvent'
+        example: member_joined
+    required:
+    - event
+    type: object
+  models.NotificationPreferenceBulkUpdateRequest:
+    description: Bulk update notification preferences request
+    properties:
+      preferences:
+        items:
+          $ref: '#/definitions/models.NotificationPreferenceBulkItem'
+        minItems: 1
+        type: array
+    required:
+    - preferences
+    type: object
+  models.NotificationPreferenceUpdateRequest:
+    description: Update notification preferences request
+    properties:
+      enabled:
+        example: true
+        type: boolean
+    type: object
+  models.NotificationType:
+    enum:
+    - info
+    - success
+    - warning
+    - error
+    type: string
+    x-enum-varnames:
+    - NotificationTypeInfo
+    - NotificationTypeSuccess
+    - NotificationTypeWarning
+    - NotificationTypeError
   models.OrganizationCreateRequest:
     description: Organization creation request
     properties:
@@ -350,6 +411,44 @@ definitions:
     - name
     - password
     type: object
+  models.TestNotificationRequest:
+    description: Test notification request
+    properties:
+      message:
+        example: This is a test notification to verify your settings
+        maxLength: 500
+        minLength: 1
+        type: string
+      organization_id:
+        example: 550e8400-e29b-41d4-a716-446655440002
+        type: string
+      title:
+        example: Test Notification
+        maxLength: 200
+        minLength: 1
+        type: string
+      type:
+        allOf:
+        - $ref: '#/definitions/models.NotificationType'
+        enum:
+        - info
+        - success
+        - warning
+        - error
+        example: info
+    required:
+    - message
+    - organization_id
+    - title
+    - type
+    type: object
+  models.UpdateLastSelectedOrganizationRequest:
+    description: Update last selected organization request
+    properties:
+      organization_id:
+        example: 550e8400-e29b-41d4-a716-446655440002
+        type: string
+    type: object
   models.UserResponse:
     description: User response
     properties:
@@ -358,6 +457,9 @@ definitions:
         type: string
       id:
         example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      last_selected_organization_id:
+        example: 550e8400-e29b-41d4-a716-446655440002
         type: string
       name:
         example: John Doe
@@ -385,6 +487,75 @@ info:
   title: AvantPro Backend API
   version: "1.0"
 paths:
+  /api/v1/auth/last-selected-organization:
+    put:
+      consumes:
+      - application/json
+      description: Update user's last selected organization preference
+      parameters:
+      - description: Organization preference data
+        in: body
+        name: organization
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateLastSelectedOrganizationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            properties:
+              detail:
+                type: string
+              instance:
+                type: string
+              status:
+                type: integer
+              title:
+                type: string
+              type:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              detail:
+                type: string
+              instance:
+                type: string
+              status:
+                type: integer
+              title:
+                type: string
+              type:
+                type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            properties:
+              detail:
+                type: string
+              instance:
+                type: string
+              status:
+                type: integer
+              title:
+                type: string
+              type:
+                type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: Update last selected organization
+      tags:
+      - auth
   /api/v1/auth/login:
     post:
       consumes:
@@ -653,6 +824,469 @@ paths:
       summary: Register new user
       tags:
       - auth
+  /notification-preferences:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve notification preferences for the authenticated user. Creates
+        defaults if none exist.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success response with preferences
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get user notification preferences
+      tags:
+      - notification-preferences
+    put:
+      consumes:
+      - application/json
+      description: Bulk update notification preferences for the authenticated user
+      parameters:
+      - description: Bulk update request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.NotificationPreferenceBulkUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success response with updated preferences
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update user notification preferences
+      tags:
+      - notification-preferences
+  /notification-preferences/{event}:
+    put:
+      consumes:
+      - application/json
+      description: Update a specific notification preference for the authenticated
+        user
+      parameters:
+      - description: Notification event type
+        in: path
+        name: event
+        required: true
+        type: string
+      - description: Update request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.NotificationPreferenceUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success response with updated preference
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Preference not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update single notification preference
+      tags:
+      - notification-preferences
+  /notification-preferences/events:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all available notification event types with descriptions
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success response with available events
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get available notification events
+      tags:
+      - notification-preferences
+  /notification-preferences/reset:
+    post:
+      consumes:
+      - application/json
+      description: Reset all notification preferences for the authenticated user to
+        default values
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success response with default preferences
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Reset preferences to defaults
+      tags:
+      - notification-preferences
+  /notification-preferences/test:
+    post:
+      consumes:
+      - application/json
+      description: Generate a test notification for the authenticated user to verify
+        settings
+      parameters:
+      - description: Test notification request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.TestNotificationRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Success response with test notification
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Generate test notification
+      tags:
+      - notification-preferences
+  /notifications:
+    delete:
+      consumes:
+      - application/json
+      description: Delete all notifications for the authenticated user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success message
+          schema:
+            $ref: '#/definitions/models.MessageResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete all notifications
+      tags:
+      - notifications
+    get:
+      consumes:
+      - application/json
+      description: Retrieve paginated list of notifications for the authenticated
+        user
+      parameters:
+      - default: 1
+        description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: 'Number of items per page (default: 10, max: 100)'
+        in: query
+        name: limit
+        type: integer
+      - default: created_at
+        description: Sort by field (title, type, read, created_at, updated_at)
+        in: query
+        name: sortBy
+        type: string
+      - default: desc
+        description: Sort order (asc, desc)
+        in: query
+        name: sortOrder
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success response with notifications and pagination
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get user notifications
+      tags:
+      - notifications
+  /notifications/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a specific notification for the authenticated user
+      parameters:
+      - description: Notification ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success message
+          schema:
+            $ref: '#/definitions/models.MessageResponse'
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Notification not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete notification
+      tags:
+      - notifications
+  /notifications/{id}/read:
+    put:
+      consumes:
+      - application/json
+      description: Mark a specific notification as read for the authenticated user
+      parameters:
+      - description: Notification ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success message
+          schema:
+            $ref: '#/definitions/models.MessageResponse'
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Notification not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Mark notification as read
+      tags:
+      - notifications
+  /notifications/mark-all-read:
+    put:
+      consumes:
+      - application/json
+      description: Mark all notifications as read for the authenticated user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success message
+          schema:
+            $ref: '#/definitions/models.MessageResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Mark all notifications as read
+      tags:
+      - notifications
+  /notifications/unread:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all unread notifications for the authenticated user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success response with unread notifications
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get unread notifications
+      tags:
+      - notifications
+  /notifications/unread-count:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve the count of unread notifications for the authenticated
+        user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success response with unread count
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get unread notifications count
+      tags:
+      - notifications
   /organizations:
     post:
       consumes:
@@ -1188,6 +1822,34 @@ paths:
           schema:
             $ref: '#/definitions/errors.ProblemDetail'
       summary: Accept organization invitation
+      tags:
+      - organizations
+  /organizations/invites/token/{token}/validate:
+    get:
+      description: Validate an invitation token and check if the invited user exists
+      parameters:
+      - description: Invitation Token
+        in: path
+        name: token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/errors.ProblemDetail'
+        "410":
+          description: Gone
+          schema:
+            $ref: '#/definitions/errors.ProblemDetail'
+      summary: Validate organization invitation
       tags:
       - organizations
   /organizations/memberships:

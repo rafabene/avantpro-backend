@@ -26,6 +26,9 @@ type UserRepository interface {
 
 	// Delete removes a user from the database (soft delete)
 	Delete(id uuid.UUID) error
+
+	// UpdateLastSelectedOrganization updates the user's last selected organization
+	UpdateLastSelectedOrganization(userID uuid.UUID, organizationID *uuid.UUID) error
 }
 
 // userRepository implements the UserRepository interface
@@ -107,4 +110,9 @@ func (r *userRepository) Update(user *models.User) error {
 // Delete removes a user from the database (soft delete)
 func (r *userRepository) Delete(id uuid.UUID) error {
 	return r.db.Delete(&models.User{}, id).Error
+}
+
+// UpdateLastSelectedOrganization updates the user's last selected organization
+func (r *userRepository) UpdateLastSelectedOrganization(userID uuid.UUID, organizationID *uuid.UUID) error {
+	return r.db.Model(&models.User{}).Where("id = ?", userID).Update("last_selected_organization_id", organizationID).Error
 }

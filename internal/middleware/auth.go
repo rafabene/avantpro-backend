@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"github.com/moogar0880/problems"
 )
 
@@ -18,33 +19,24 @@ type JWTClaims struct {
 // AuthMiddleware creates a JWT authentication middleware
 func AuthMiddleware(jwtSecret string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Get the Authorization header
+		var tokenString string
+
+		// Try to get token from Authorization header first
 		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
-			problem := problems.NewStatusProblem(http.StatusUnauthorized)
-			problem.Title = "Authentication Required"
-			problem.Detail = "Authorization header is required"
-			c.JSON(problem.Status, problem)
-			c.Abort()
-			return
+		if authHeader != "" && strings.HasPrefix(authHeader, "Bearer ") {
+			tokenString = strings.TrimPrefix(authHeader, "Bearer ")
+		} else {
+			// For WebSocket connections, try to get token from query parameter
+			authQuery := c.Query("authorization")
+			if authQuery != "" && strings.HasPrefix(authQuery, "Bearer ") {
+				tokenString = strings.TrimPrefix(authQuery, "Bearer ")
+			}
 		}
 
-		// Check if the header starts with "Bearer "
-		if !strings.HasPrefix(authHeader, "Bearer ") {
-			problem := problems.NewStatusProblem(http.StatusUnauthorized)
-			problem.Title = "Invalid Authorization Header"
-			problem.Detail = "Authorization header must start with 'Bearer '"
-			c.JSON(problem.Status, problem)
-			c.Abort()
-			return
-		}
-
-		// Extract the token
-		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
 		if tokenString == "" {
 			problem := problems.NewStatusProblem(http.StatusUnauthorized)
-			problem.Title = "Missing Token"
-			problem.Detail = "Bearer token is required"
+			problem.Title = "Authentication Required"
+			problem.Detail = "Authorization token is required (via header or query parameter)"
 			c.JSON(problem.Status, problem)
 			c.Abort()
 			return
@@ -89,19 +81,30 @@ func AuthMiddleware(jwtSecret string) gin.HandlerFunc {
 			return
 		}
 
+		// Parse user ID as UUID
+		userID, err := uuid.Parse(claims.UserID)
+		if err != nil {
+			problem := problems.NewStatusProblem(http.StatusUnauthorized)
+			problem.Title = "Invalid User ID"
+			problem.Detail = "User ID in token is not a valid UUID"
+			c.JSON(problem.Status, problem)
+			c.Abort()
+			return
+		}
+
 		// Set the user ID in the context
-		c.Set("user_id", claims.UserID)
+		c.Set("userID", userID)
 		c.Next()
 	}
 }
 
 // GetUserIDFromContext extracts the user ID from the Gin context
-func GetUserIDFromContext(c *gin.Context) (string, bool) {
-	userID, exists := c.Get("user_id")
+func GetUserIDFromContext(c *gin.Context) (uuid.UUID, bool) {
+	userID, exists := c.Get("userID")
 	if !exists {
-		return "", false
+		return uuid.Nil, false
 	}
 
-	userIDStr, ok := userID.(string)
-	return userIDStr, ok
+	userIDUUID, ok := userID.(uuid.UUID)
+	return userIDUUID, ok
 }

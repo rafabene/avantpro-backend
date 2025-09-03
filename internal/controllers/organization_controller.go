@@ -39,15 +39,9 @@ func NewOrganizationController(service services.OrganizationServiceInterface) *O
 // @Router /organizations [post]
 func (c *OrganizationController) CreateOrganization(ctx *gin.Context) {
 	// Get user ID from JWT token
-	userIDStr, ok := middleware.GetUserIDFromContext(ctx)
+	userID, ok := middleware.GetUserIDFromContext(ctx)
 	if !ok {
 		errors.HandleUnauthorizedError(ctx, "User not authenticated")
-		return
-	}
-
-	userID, err := uuid.Parse(userIDStr)
-	if err != nil {
-		errors.HandleValidationError(ctx, "Invalid user ID format")
 		return
 	}
 
@@ -117,15 +111,9 @@ func (c *OrganizationController) GetOrganization(ctx *gin.Context) {
 // @Failure 500 {object} errors.ProblemDetail
 // @Router /organizations/my [get]
 func (c *OrganizationController) GetUserOrganizations(ctx *gin.Context) {
-	userIDStr, ok := middleware.GetUserIDFromContext(ctx)
+	userID, ok := middleware.GetUserIDFromContext(ctx)
 	if !ok {
 		errors.HandleUnauthorizedError(ctx, "User not authenticated")
-		return
-	}
-
-	userID, err := uuid.Parse(userIDStr)
-	if err != nil {
-		errors.HandleValidationError(ctx, "Invalid user ID format")
 		return
 	}
 
@@ -172,15 +160,9 @@ func (c *OrganizationController) UpdateOrganization(ctx *gin.Context) {
 		return
 	}
 
-	userIDStr, ok := middleware.GetUserIDFromContext(ctx)
+	userID, ok := middleware.GetUserIDFromContext(ctx)
 	if !ok {
 		errors.HandleUnauthorizedError(ctx, "User not authenticated")
-		return
-	}
-
-	userID, err := uuid.Parse(userIDStr)
-	if err != nil {
-		errors.HandleValidationError(ctx, "Invalid user ID format")
 		return
 	}
 
@@ -230,15 +212,9 @@ func (c *OrganizationController) DeleteOrganization(ctx *gin.Context) {
 		return
 	}
 
-	userIDStr, ok := middleware.GetUserIDFromContext(ctx)
+	userID, ok := middleware.GetUserIDFromContext(ctx)
 	if !ok {
 		errors.HandleUnauthorizedError(ctx, "User not authenticated")
-		return
-	}
-
-	userID, err := uuid.Parse(userIDStr)
-	if err != nil {
-		errors.HandleValidationError(ctx, "Invalid user ID format")
 		return
 	}
 
@@ -285,15 +261,9 @@ func (c *OrganizationController) GetOrganizationMembers(ctx *gin.Context) {
 		return
 	}
 
-	userIDStr, ok := middleware.GetUserIDFromContext(ctx)
+	userID, ok := middleware.GetUserIDFromContext(ctx)
 	if !ok {
 		errors.HandleUnauthorizedError(ctx, "User not authenticated")
-		return
-	}
-
-	userID, err := uuid.Parse(userIDStr)
-	if err != nil {
-		errors.HandleValidationError(ctx, "Invalid user ID format")
 		return
 	}
 
@@ -352,15 +322,9 @@ func (c *OrganizationController) UpdateMemberRole(ctx *gin.Context) {
 		return
 	}
 
-	userIDStr, ok := middleware.GetUserIDFromContext(ctx)
+	userID, ok := middleware.GetUserIDFromContext(ctx)
 	if !ok {
 		errors.HandleUnauthorizedError(ctx, "User not authenticated")
-		return
-	}
-
-	userID, err := uuid.Parse(userIDStr)
-	if err != nil {
-		errors.HandleValidationError(ctx, "Invalid user ID format")
 		return
 	}
 
@@ -419,15 +383,9 @@ func (c *OrganizationController) RemoveMember(ctx *gin.Context) {
 		return
 	}
 
-	userIDStr, ok := middleware.GetUserIDFromContext(ctx)
+	userID, ok := middleware.GetUserIDFromContext(ctx)
 	if !ok {
 		errors.HandleUnauthorizedError(ctx, "User not authenticated")
-		return
-	}
-
-	userID, err := uuid.Parse(userIDStr)
-	if err != nil {
-		errors.HandleValidationError(ctx, "Invalid user ID format")
 		return
 	}
 
@@ -472,15 +430,9 @@ func (c *OrganizationController) InviteUser(ctx *gin.Context) {
 		return
 	}
 
-	userIDStr, ok := middleware.GetUserIDFromContext(ctx)
+	userID, ok := middleware.GetUserIDFromContext(ctx)
 	if !ok {
 		errors.HandleUnauthorizedError(ctx, "User not authenticated")
-		return
-	}
-
-	userID, err := uuid.Parse(userIDStr)
-	if err != nil {
-		errors.HandleValidationError(ctx, "Invalid user ID format")
 		return
 	}
 
@@ -539,15 +491,9 @@ func (c *OrganizationController) GetOrganizationInvites(ctx *gin.Context) {
 		return
 	}
 
-	userIDStr, ok := middleware.GetUserIDFromContext(ctx)
+	userID, ok := middleware.GetUserIDFromContext(ctx)
 	if !ok {
 		errors.HandleUnauthorizedError(ctx, "User not authenticated")
-		return
-	}
-
-	userID, err := uuid.Parse(userIDStr)
-	if err != nil {
-		errors.HandleValidationError(ctx, "Invalid user ID format")
 		return
 	}
 
@@ -600,15 +546,9 @@ func (c *OrganizationController) AcceptInvite(ctx *gin.Context) {
 		return
 	}
 
-	userIDStr, ok := middleware.GetUserIDFromContext(ctx)
+	userID, ok := middleware.GetUserIDFromContext(ctx)
 	if !ok {
 		errors.HandleUnauthorizedError(ctx, "User not authenticated")
-		return
-	}
-
-	userID, err := uuid.Parse(userIDStr)
-	if err != nil {
-		errors.HandleValidationError(ctx, "Invalid user ID format")
 		return
 	}
 
@@ -622,6 +562,10 @@ func (c *OrganizationController) AcceptInvite(ctx *gin.Context) {
 			errors.HandleGoneError(ctx, err.Error())
 			return
 		}
+		if err.Error() == "user not found" {
+			errors.HandleNotFoundError(ctx, "User not found")
+			return
+		}
 		if err.Error() == "invitation email does not match user email" ||
 			err.Error() == "user is already a member of this organization" {
 			errors.HandleConflictError(ctx, err.Error())
@@ -633,6 +577,40 @@ func (c *OrganizationController) AcceptInvite(ctx *gin.Context) {
 
 	response := c.convertToOrganizationMemberResponse(member)
 	ctx.JSON(http.StatusOK, response)
+}
+
+// ValidateInvite validates an organization invitation token without requiring authentication
+// @Summary Validate organization invitation
+// @Description Validate an invitation token and check if the invited user exists
+// @Tags organizations
+// @Produce json
+// @Param token path string true "Invitation Token"
+// @Success 200 {object} map[string]interface{}
+// @Failure 404 {object} errors.ProblemDetail
+// @Failure 410 {object} errors.ProblemDetail
+// @Router /organizations/invites/token/{token}/validate [get]
+func (c *OrganizationController) ValidateInvite(ctx *gin.Context) {
+	token := ctx.Param("token")
+	if token == "" {
+		errors.HandleValidationError(ctx, "Invitation token required")
+		return
+	}
+
+	result, err := c.service.ValidateInvite(token)
+	if err != nil {
+		if err.Error() == "invitation not found" {
+			errors.HandleNotFoundError(ctx, "Invitation not found")
+			return
+		}
+		if err.Error() == "invitation is no longer valid" || err.Error() == "invitation has expired" {
+			errors.HandleGoneError(ctx, err.Error())
+			return
+		}
+		errors.HandleInternalError(ctx, "Failed to validate invitation", err)
+		return
+	}
+
+	ctx.JSON(http.StatusOK, result)
 }
 
 // RevokeInvite revokes an organization invitation
@@ -657,15 +635,9 @@ func (c *OrganizationController) RevokeInvite(ctx *gin.Context) {
 		return
 	}
 
-	userIDStr, ok := middleware.GetUserIDFromContext(ctx)
+	userID, ok := middleware.GetUserIDFromContext(ctx)
 	if !ok {
 		errors.HandleUnauthorizedError(ctx, "User not authenticated")
-		return
-	}
-
-	userID, err := uuid.Parse(userIDStr)
-	if err != nil {
-		errors.HandleValidationError(ctx, "Invalid user ID format")
 		return
 	}
 
@@ -702,15 +674,9 @@ func (c *OrganizationController) RevokeInvite(ctx *gin.Context) {
 // @Failure 500 {object} errors.ProblemDetail
 // @Router /organizations/memberships [get]
 func (c *OrganizationController) GetUserMemberships(ctx *gin.Context) {
-	userIDStr, ok := middleware.GetUserIDFromContext(ctx)
+	userID, ok := middleware.GetUserIDFromContext(ctx)
 	if !ok {
 		errors.HandleUnauthorizedError(ctx, "User not authenticated")
-		return
-	}
-
-	userID, err := uuid.Parse(userIDStr)
-	if err != nil {
-		errors.HandleValidationError(ctx, "Invalid user ID format")
 		return
 	}
 
@@ -904,15 +870,9 @@ func (c *OrganizationController) ResendInvite(ctx *gin.Context) {
 		return
 	}
 
-	userIDStr, ok := middleware.GetUserIDFromContext(ctx)
+	userID, ok := middleware.GetUserIDFromContext(ctx)
 	if !ok {
 		errors.HandleUnauthorizedError(ctx, "User not authenticated")
-		return
-	}
-
-	userID, err := uuid.Parse(userIDStr)
-	if err != nil {
-		errors.HandleValidationError(ctx, "Invalid user ID format")
 		return
 	}
 
