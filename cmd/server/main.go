@@ -76,8 +76,8 @@ func main() {
 	// Initialize services
 	emailService := services.NewEmailService()
 	notificationService := services.NewNotificationService(notificationRepo, orgRepo, userRepo, wsHub)
-	notificationPrefService := services.NewNotificationPreferenceService(notificationPrefRepo, notificationRepo, userRepo, notificationService)
-	orgService := services.NewOrganizationService(orgRepo, userRepo, emailService, notificationService)
+	notificationPrefService := services.NewNotificationPreferenceService(notificationPrefRepo, notificationRepo, orgRepo, notificationService)
+	orgService := services.NewOrganizationService(orgRepo, userRepo, emailService, notificationService, notificationPrefRepo)
 
 	// Initialize controllers
 	orgController := controllers.NewOrganizationController(orgService)
@@ -167,18 +167,18 @@ func main() {
 			organizations.POST("", orgController.CreateOrganization)
 			organizations.GET("/my", orgController.GetUserOrganizations)
 			organizations.GET("/memberships", orgController.GetUserMemberships)
-			organizations.GET("/:id", orgController.GetOrganization)
-			organizations.PUT("/:id", orgController.UpdateOrganization)
-			organizations.DELETE("/:id", orgController.DeleteOrganization)
+			organizations.GET("", orgController.GetOrganization)       // Uses Organization-ID header
+			organizations.PUT("", orgController.UpdateOrganization)    // Uses Organization-ID header
+			organizations.DELETE("", orgController.DeleteOrganization) // Uses Organization-ID header
 
 			// Organization Members
-			organizations.GET("/:id/members", orgController.GetOrganizationMembers)
-			organizations.PUT("/:id/members/:userId", orgController.UpdateMemberRole)
-			organizations.DELETE("/:id/members/:userId", orgController.RemoveMember)
+			organizations.GET("/members", orgController.GetOrganizationMembers)   // Uses Organization-ID header
+			organizations.PUT("/members/:userId", orgController.UpdateMemberRole) // Uses Organization-ID header
+			organizations.DELETE("/members/:userId", orgController.RemoveMember)  // Uses Organization-ID header
 
 			// Organization Invites
-			organizations.POST("/:id/invites", orgController.InviteUser)
-			organizations.GET("/:id/invites", orgController.GetOrganizationInvites)
+			organizations.POST("/invites", orgController.InviteUser)            // Uses Organization-ID header
+			organizations.GET("/invites", orgController.GetOrganizationInvites) // Uses Organization-ID header
 
 			// Invite Management (by ID)
 			organizations.POST("/invites/id/:inviteId/resend", orgController.ResendInvite)
@@ -188,26 +188,26 @@ func main() {
 			organizations.POST("/invites/token/:token/accept", orgController.AcceptInvite)
 
 			// Organization-scoped Notification routes
-			orgNotifications := organizations.Group("/:id/notifications")
+			orgNotifications := organizations.Group("/notifications")
 			{
-				orgNotifications.GET("", notificationController.GetUserNotifications)
-				orgNotifications.GET("/unread", notificationController.GetUnreadNotifications)
-				orgNotifications.GET("/unread-count", notificationController.GetUnreadCount)
-				orgNotifications.PUT("/mark-all-read", notificationController.MarkAllAsRead)
-				orgNotifications.PUT("/:notifId/read", notificationController.MarkAsRead)
-				orgNotifications.DELETE("", notificationController.DeleteAllNotifications)
-				orgNotifications.DELETE("/:notifId", notificationController.DeleteNotification)
+				orgNotifications.GET("", notificationController.GetUserNotifications)           // Uses Organization-ID header
+				orgNotifications.GET("/unread", notificationController.GetUnreadNotifications)  // Uses Organization-ID header
+				orgNotifications.GET("/unread-count", notificationController.GetUnreadCount)    // Uses Organization-ID header
+				orgNotifications.PUT("/mark-all-read", notificationController.MarkAllAsRead)    // Uses Organization-ID header
+				orgNotifications.PUT("/:notifId/read", notificationController.MarkAsRead)       // Uses Organization-ID header
+				orgNotifications.DELETE("", notificationController.DeleteAllNotifications)      // Uses Organization-ID header
+				orgNotifications.DELETE("/:notifId", notificationController.DeleteNotification) // Uses Organization-ID header
 			}
 
 			// Organization-scoped Notification preference routes
-			orgNotificationPrefs := organizations.Group("/:id/notification-preferences")
+			orgNotificationPrefs := organizations.Group("/notification-preferences")
 			{
-				orgNotificationPrefs.GET("", notificationPrefController.GetUserPreferences)
-				orgNotificationPrefs.PUT("", notificationPrefController.UpdateUserPreferences)
-				orgNotificationPrefs.PUT("/:event", notificationPrefController.UpdateSinglePreference)
-				orgNotificationPrefs.POST("/reset", notificationPrefController.ResetToDefaults)
-				orgNotificationPrefs.GET("/events", notificationPrefController.GetAvailableEvents)
-				orgNotificationPrefs.POST("/test", notificationPrefController.GenerateTestNotification)
+				orgNotificationPrefs.GET("", notificationPrefController.GetOrganizationPreferences)     // Uses Organization-ID header
+				orgNotificationPrefs.PUT("", notificationPrefController.UpdateOrganizationPreferences)  // Uses Organization-ID header
+				orgNotificationPrefs.PUT("/:event", notificationPrefController.UpdateSinglePreference)  // Uses Organization-ID header
+				orgNotificationPrefs.POST("/reset", notificationPrefController.ResetToDefaults)         // Uses Organization-ID header
+				orgNotificationPrefs.GET("/events", notificationPrefController.GetAvailableEvents)      // Uses Organization-ID header
+				orgNotificationPrefs.POST("/test", notificationPrefController.GenerateTestNotification) // Uses Organization-ID header
 			}
 		}
 	}

@@ -12,32 +12,32 @@ type NotificationPreferenceRepository interface {
 	// Create inserts a new notification preference into the database
 	Create(preference *models.NotificationPreference) error
 
-	// CreateDefaults creates default notification preferences for a user
-	CreateDefaults(userID uuid.UUID) error
+	// CreateDefaults creates default notification preferences for an organization
+	CreateDefaults(organizationID uuid.UUID) error
 
-	// GetByUserID retrieves all notification preferences for a specific user
-	GetByUserID(userID uuid.UUID) ([]models.NotificationPreference, error)
+	// GetByOrganizationID retrieves all notification preferences for a specific organization
+	GetByOrganizationID(organizationID uuid.UUID) ([]models.NotificationPreference, error)
 
-	// GetByUserIDAndEvent retrieves a specific notification preference by user ID and event type
-	GetByUserIDAndEvent(userID uuid.UUID, event models.NotificationEvent) (*models.NotificationPreference, error)
+	// GetByOrganizationIDAndEvent retrieves a specific notification preference by organization ID and event type
+	GetByOrganizationIDAndEvent(organizationID uuid.UUID, event models.NotificationEvent) (*models.NotificationPreference, error)
 
 	// Update modifies an existing notification preference in the database
 	Update(preference *models.NotificationPreference) error
 
-	// BulkUpdate updates multiple notification preferences for a user
-	BulkUpdate(userID uuid.UUID, preferences []models.NotificationPreferenceBulkItem) error
+	// BulkUpdate updates multiple notification preferences for an organization
+	BulkUpdate(organizationID uuid.UUID, preferences []models.NotificationPreferenceBulkItem) error
 
 	// Delete removes a notification preference from the database (soft delete)
 	Delete(id uuid.UUID) error
 
-	// DeleteByUserID removes all notification preferences for a user (soft delete)
-	DeleteByUserID(userID uuid.UUID) error
+	// DeleteByOrganizationID removes all notification preferences for an organization (soft delete)
+	DeleteByOrganizationID(organizationID uuid.UUID) error
 
-	// IsEventEnabledForUser checks if a specific event is enabled for a user
-	IsEventEnabledForUser(userID uuid.UUID, event models.NotificationEvent) (bool, error)
+	// IsEventEnabledForOrganization checks if a specific event is enabled for an organization
+	IsEventEnabledForOrganization(organizationID uuid.UUID, event models.NotificationEvent) (bool, error)
 
-	// GetEnabledEventsForUser retrieves all enabled events for a user
-	GetEnabledEventsForUser(userID uuid.UUID) ([]models.NotificationEvent, error)
+	// GetEnabledEventsForOrganization retrieves all enabled events for an organization
+	GetEnabledEventsForOrganization(organizationID uuid.UUID) ([]models.NotificationEvent, error)
 }
 
 // notificationPreferenceRepository implements the NotificationPreferenceRepository interface
@@ -55,11 +55,11 @@ func (r *notificationPreferenceRepository) Create(preference *models.Notificatio
 	return r.db.Create(preference).Error
 }
 
-// CreateDefaults creates default notification preferences for a user
-func (r *notificationPreferenceRepository) CreateDefaults(userID uuid.UUID) error {
-	// Check if preferences already exist for this user
+// CreateDefaults creates default notification preferences for an organization
+func (r *notificationPreferenceRepository) CreateDefaults(organizationID uuid.UUID) error {
+	// Check if preferences already exist for this organization
 	var count int64
-	if err := r.db.Model(&models.NotificationPreference{}).Where("user_id = ?", userID).Count(&count).Error; err != nil {
+	if err := r.db.Model(&models.NotificationPreference{}).Where("organization_id = ?", organizationID).Count(&count).Error; err != nil {
 		return err
 	}
 
@@ -69,7 +69,7 @@ func (r *notificationPreferenceRepository) CreateDefaults(userID uuid.UUID) erro
 	}
 
 	// Create default preferences
-	defaultPreferences := models.GetDefaultNotificationPreferences(userID)
+	defaultPreferences := models.GetDefaultNotificationPreferences(organizationID)
 
 	// Use a transaction to ensure all preferences are created or none
 	return r.db.Transaction(func(tx *gorm.DB) error {
@@ -82,20 +82,20 @@ func (r *notificationPreferenceRepository) CreateDefaults(userID uuid.UUID) erro
 	})
 }
 
-// GetByUserID retrieves all notification preferences for a specific user
-func (r *notificationPreferenceRepository) GetByUserID(userID uuid.UUID) ([]models.NotificationPreference, error) {
+// GetByOrganizationID retrieves all notification preferences for a specific organization
+func (r *notificationPreferenceRepository) GetByOrganizationID(organizationID uuid.UUID) ([]models.NotificationPreference, error) {
 	var preferences []models.NotificationPreference
-	err := r.db.Where("user_id = ?", userID).Order("event ASC").Find(&preferences).Error
+	err := r.db.Where("organization_id = ?", organizationID).Order("event ASC").Find(&preferences).Error
 	if err != nil {
 		return nil, err
 	}
 	return preferences, nil
 }
 
-// GetByUserIDAndEvent retrieves a specific notification preference by user ID and event type
-func (r *notificationPreferenceRepository) GetByUserIDAndEvent(userID uuid.UUID, event models.NotificationEvent) (*models.NotificationPreference, error) {
+// GetByOrganizationIDAndEvent retrieves a specific notification preference by organization ID and event type
+func (r *notificationPreferenceRepository) GetByOrganizationIDAndEvent(organizationID uuid.UUID, event models.NotificationEvent) (*models.NotificationPreference, error) {
 	var preference models.NotificationPreference
-	err := r.db.Where("user_id = ? AND event = ?", userID, event).First(&preference).Error
+	err := r.db.Where("organization_id = ? AND event = ?", organizationID, event).First(&preference).Error
 	if err != nil {
 		return nil, err
 	}
@@ -107,20 +107,20 @@ func (r *notificationPreferenceRepository) Update(preference *models.Notificatio
 	return r.db.Save(preference).Error
 }
 
-// BulkUpdate updates multiple notification preferences for a user
-func (r *notificationPreferenceRepository) BulkUpdate(userID uuid.UUID, preferences []models.NotificationPreferenceBulkItem) error {
+// BulkUpdate updates multiple notification preferences for an organization
+func (r *notificationPreferenceRepository) BulkUpdate(organizationID uuid.UUID, preferences []models.NotificationPreferenceBulkItem) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		for _, pref := range preferences {
 			// Find existing preference or create new one
 			var existing models.NotificationPreference
-			err := tx.Where("user_id = ? AND event = ?", userID, pref.Event).First(&existing).Error
+			err := tx.Where("organization_id = ? AND event = ?", organizationID, pref.Event).First(&existing).Error
 
 			if err == gorm.ErrRecordNotFound {
 				// Create new preference
 				newPref := models.NotificationPreference{
-					UserID:  userID,
-					Event:   pref.Event,
-					Enabled: pref.Enabled,
+					OrganizationID: organizationID,
+					Event:          pref.Event,
+					Enabled:        pref.Enabled,
 				}
 				if err := tx.Create(&newPref).Error; err != nil {
 					return err
@@ -144,15 +144,15 @@ func (r *notificationPreferenceRepository) Delete(id uuid.UUID) error {
 	return r.db.Delete(&models.NotificationPreference{}, id).Error
 }
 
-// DeleteByUserID removes all notification preferences for a user (soft delete)
-func (r *notificationPreferenceRepository) DeleteByUserID(userID uuid.UUID) error {
-	return r.db.Where("user_id = ?", userID).Delete(&models.NotificationPreference{}).Error
+// DeleteByOrganizationID removes all notification preferences for an organization (soft delete)
+func (r *notificationPreferenceRepository) DeleteByOrganizationID(organizationID uuid.UUID) error {
+	return r.db.Where("organization_id = ?", organizationID).Delete(&models.NotificationPreference{}).Error
 }
 
-// IsEventEnabledForUser checks if a specific event is enabled for a user
-func (r *notificationPreferenceRepository) IsEventEnabledForUser(userID uuid.UUID, event models.NotificationEvent) (bool, error) {
+// IsEventEnabledForOrganization checks if a specific event is enabled for an organization
+func (r *notificationPreferenceRepository) IsEventEnabledForOrganization(organizationID uuid.UUID, event models.NotificationEvent) (bool, error) {
 	var preference models.NotificationPreference
-	err := r.db.Where("user_id = ? AND event = ?", userID, event).First(&preference).Error
+	err := r.db.Where("organization_id = ? AND event = ?", organizationID, event).First(&preference).Error
 
 	if err == gorm.ErrRecordNotFound {
 		// If no preference found, assume enabled by default
@@ -164,10 +164,10 @@ func (r *notificationPreferenceRepository) IsEventEnabledForUser(userID uuid.UUI
 	return preference.Enabled, nil
 }
 
-// GetEnabledEventsForUser retrieves all enabled events for a user
-func (r *notificationPreferenceRepository) GetEnabledEventsForUser(userID uuid.UUID) ([]models.NotificationEvent, error) {
+// GetEnabledEventsForOrganization retrieves all enabled events for an organization
+func (r *notificationPreferenceRepository) GetEnabledEventsForOrganization(organizationID uuid.UUID) ([]models.NotificationEvent, error) {
 	var preferences []models.NotificationPreference
-	err := r.db.Where("user_id = ? AND enabled = ?", userID, true).Find(&preferences).Error
+	err := r.db.Where("organization_id = ? AND enabled = ?", organizationID, true).Find(&preferences).Error
 	if err != nil {
 		return nil, err
 	}

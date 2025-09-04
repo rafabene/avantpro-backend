@@ -824,125 +824,6 @@ paths:
       summary: Register new user
       tags:
       - auth
-  /notification-preferences:
-    get:
-      consumes:
-      - application/json
-      description: Retrieve notification preferences for the authenticated user. Creates
-        defaults if none exist.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Success response with preferences
-          schema:
-            additionalProperties: true
-            type: object
-        "401":
-          description: Unauthorized
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Internal server error
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Get user notification preferences
-      tags:
-      - notification-preferences
-    put:
-      consumes:
-      - application/json
-      description: Bulk update notification preferences for the authenticated user
-      parameters:
-      - description: Bulk update request
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/models.NotificationPreferenceBulkUpdateRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Success response with updated preferences
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Bad request
-          schema:
-            additionalProperties: true
-            type: object
-        "401":
-          description: Unauthorized
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Internal server error
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Update user notification preferences
-      tags:
-      - notification-preferences
-  /notification-preferences/{event}:
-    put:
-      consumes:
-      - application/json
-      description: Update a specific notification preference for the authenticated
-        user
-      parameters:
-      - description: Notification event type
-        in: path
-        name: event
-        required: true
-        type: string
-      - description: Update request
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/models.NotificationPreferenceUpdateRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Success response with updated preference
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Bad request
-          schema:
-            additionalProperties: true
-            type: object
-        "401":
-          description: Unauthorized
-          schema:
-            additionalProperties: true
-            type: object
-        "404":
-          description: Preference not found
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Internal server error
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Update single notification preference
-      tags:
-      - notification-preferences
   /notification-preferences/events:
     get:
       consumes:
@@ -964,35 +845,6 @@ paths:
       security:
       - BearerAuth: []
       summary: Get available notification events
-      tags:
-      - notification-preferences
-  /notification-preferences/reset:
-    post:
-      consumes:
-      - application/json
-      description: Reset all notification preferences for the authenticated user to
-        default values
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Success response with default preferences
-          schema:
-            additionalProperties: true
-            type: object
-        "401":
-          description: Unauthorized
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Internal server error
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Reset preferences to defaults
       tags:
       - notification-preferences
   /notification-preferences/test:
@@ -1036,300 +888,15 @@ paths:
       summary: Generate test notification
       tags:
       - notification-preferences
-  /notifications:
-    delete:
-      consumes:
-      - application/json
-      description: Delete all notifications for the authenticated user
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Success message
-          schema:
-            $ref: '#/definitions/models.MessageResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Internal server error
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Delete all notifications
-      tags:
-      - notifications
-    get:
-      consumes:
-      - application/json
-      description: Retrieve paginated list of notifications for the authenticated
-        user
-      parameters:
-      - default: 1
-        description: 'Page number (default: 1)'
-        in: query
-        name: page
-        type: integer
-      - default: 10
-        description: 'Number of items per page (default: 10, max: 100)'
-        in: query
-        name: limit
-        type: integer
-      - default: created_at
-        description: Sort by field (title, type, read, created_at, updated_at)
-        in: query
-        name: sortBy
-        type: string
-      - default: desc
-        description: Sort order (asc, desc)
-        in: query
-        name: sortOrder
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Success response with notifications and pagination
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Bad request
-          schema:
-            additionalProperties: true
-            type: object
-        "401":
-          description: Unauthorized
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Internal server error
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Get user notifications
-      tags:
-      - notifications
-  /notifications/{id}:
-    delete:
-      consumes:
-      - application/json
-      description: Delete a specific notification for the authenticated user
-      parameters:
-      - description: Notification ID
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Success message
-          schema:
-            $ref: '#/definitions/models.MessageResponse'
-        "400":
-          description: Bad request
-          schema:
-            additionalProperties: true
-            type: object
-        "401":
-          description: Unauthorized
-          schema:
-            additionalProperties: true
-            type: object
-        "404":
-          description: Notification not found
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Internal server error
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Delete notification
-      tags:
-      - notifications
-  /notifications/{id}/read:
-    put:
-      consumes:
-      - application/json
-      description: Mark a specific notification as read for the authenticated user
-      parameters:
-      - description: Notification ID
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Success message
-          schema:
-            $ref: '#/definitions/models.MessageResponse'
-        "400":
-          description: Bad request
-          schema:
-            additionalProperties: true
-            type: object
-        "401":
-          description: Unauthorized
-          schema:
-            additionalProperties: true
-            type: object
-        "404":
-          description: Notification not found
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Internal server error
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Mark notification as read
-      tags:
-      - notifications
-  /notifications/mark-all-read:
-    put:
-      consumes:
-      - application/json
-      description: Mark all notifications as read for the authenticated user
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Success message
-          schema:
-            $ref: '#/definitions/models.MessageResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Internal server error
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Mark all notifications as read
-      tags:
-      - notifications
-  /notifications/unread:
-    get:
-      consumes:
-      - application/json
-      description: Retrieve all unread notifications for the authenticated user
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Success response with unread notifications
-          schema:
-            additionalProperties: true
-            type: object
-        "401":
-          description: Unauthorized
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Internal server error
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Get unread notifications
-      tags:
-      - notifications
-  /notifications/unread-count:
-    get:
-      consumes:
-      - application/json
-      description: Retrieve the count of unread notifications for the authenticated
-        user
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Success response with unread count
-          schema:
-            additionalProperties: true
-            type: object
-        "401":
-          description: Unauthorized
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Internal server error
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Get unread notifications count
-      tags:
-      - notifications
   /organizations:
-    post:
-      consumes:
-      - application/json
-      description: Create a new organization with the authenticated user as admin
-      parameters:
-      - description: Organization data
-        in: body
-        name: organization
-        required: true
-        schema:
-          $ref: '#/definitions/models.OrganizationCreateRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/models.OrganizationResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/errors.ProblemDetail'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/errors.ProblemDetail'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/errors.ProblemDetail'
-      summary: Create a new organization
-      tags:
-      - organizations
-  /organizations/{id}:
     delete:
       consumes:
       - application/json
       description: Delete an organization (creator only)
       parameters:
       - description: Organization ID
-        in: path
-        name: id
+        in: header
+        name: Organization-ID
         required: true
         type: string
       produces:
@@ -1366,8 +933,8 @@ paths:
       description: Get a specific organization by its ID
       parameters:
       - description: Organization ID
-        in: path
-        name: id
+        in: header
+        name: Organization-ID
         required: true
         type: string
       produces:
@@ -1392,14 +959,47 @@ paths:
       summary: Get organization by ID
       tags:
       - organizations
+    post:
+      consumes:
+      - application/json
+      description: Create a new organization with the authenticated user as admin
+      parameters:
+      - description: Organization data
+        in: body
+        name: organization
+        required: true
+        schema:
+          $ref: '#/definitions/models.OrganizationCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.OrganizationResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errors.ProblemDetail'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errors.ProblemDetail'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/errors.ProblemDetail'
+      summary: Create a new organization
+      tags:
+      - organizations
     put:
       consumes:
       - application/json
       description: Update an organization (admin only)
       parameters:
       - description: Organization ID
-        in: path
-        name: id
+        in: header
+        name: Organization-ID
         required: true
         type: string
       - description: Update data
@@ -1438,15 +1038,15 @@ paths:
       summary: Update organization
       tags:
       - organizations
-  /organizations/{id}/invites:
+  /organizations/invites:
     get:
       consumes:
       - application/json
       description: Get all pending invitations for the organization (admin only)
       parameters:
       - description: Organization ID
-        in: path
-        name: id
+        in: header
+        name: Organization-ID
         required: true
         type: string
       - default: 1
@@ -1505,8 +1105,8 @@ paths:
       description: Send an invitation to a user to join the organization (admin only)
       parameters:
       - description: Organization ID
-        in: path
-        name: id
+        in: header
+        name: Organization-ID
         required: true
         type: string
       - description: Invitation data
@@ -1543,162 +1143,6 @@ paths:
           schema:
             $ref: '#/definitions/errors.ProblemDetail'
       summary: Invite user to organization
-      tags:
-      - organizations
-  /organizations/{id}/members:
-    get:
-      consumes:
-      - application/json
-      description: Get all members of an organization
-      parameters:
-      - description: Organization ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - default: 1
-        description: Page number
-        in: query
-        name: page
-        type: integer
-      - default: 50
-        description: Items per page
-        in: query
-        name: limit
-        type: integer
-      - default: '"joined_at"'
-        description: Sort by field
-        in: query
-        name: sortBy
-        type: string
-      - default: '"desc"'
-        description: Sort order (asc/desc)
-        in: query
-        name: sortOrder
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/models.OrganizationMemberListResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/errors.ProblemDetail'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/errors.ProblemDetail'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/errors.ProblemDetail'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/errors.ProblemDetail'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/errors.ProblemDetail'
-      summary: Get organization members
-      tags:
-      - organizations
-  /organizations/{id}/members/{userId}:
-    delete:
-      consumes:
-      - application/json
-      description: Remove a member from the organization
-      parameters:
-      - description: Organization ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: User ID
-        in: path
-        name: userId
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "204":
-          description: No Content
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/errors.ProblemDetail'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/errors.ProblemDetail'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/errors.ProblemDetail'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/errors.ProblemDetail'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/errors.ProblemDetail'
-      summary: Remove member
-      tags:
-      - organizations
-    put:
-      consumes:
-      - application/json
-      description: Update a member's role in the organization (admin only)
-      parameters:
-      - description: Organization ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: User ID
-        in: path
-        name: userId
-        required: true
-        type: string
-      - description: Role update data
-        in: body
-        name: member
-        required: true
-        schema:
-          $ref: '#/definitions/models.OrganizationMemberUpdateRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/models.OrganizationMemberResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/errors.ProblemDetail'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/errors.ProblemDetail'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/errors.ProblemDetail'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/errors.ProblemDetail'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/errors.ProblemDetail'
-      summary: Update member role
       tags:
       - organizations
   /organizations/invites/{inviteId}:
@@ -1852,6 +1296,162 @@ paths:
       summary: Validate organization invitation
       tags:
       - organizations
+  /organizations/members:
+    get:
+      consumes:
+      - application/json
+      description: Get all members of an organization
+      parameters:
+      - description: Organization ID
+        in: header
+        name: Organization-ID
+        required: true
+        type: string
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 50
+        description: Items per page
+        in: query
+        name: limit
+        type: integer
+      - default: '"joined_at"'
+        description: Sort by field
+        in: query
+        name: sortBy
+        type: string
+      - default: '"desc"'
+        description: Sort order (asc/desc)
+        in: query
+        name: sortOrder
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.OrganizationMemberListResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errors.ProblemDetail'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errors.ProblemDetail'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/errors.ProblemDetail'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/errors.ProblemDetail'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/errors.ProblemDetail'
+      summary: Get organization members
+      tags:
+      - organizations
+  /organizations/members/{userId}:
+    delete:
+      consumes:
+      - application/json
+      description: Remove a member from the organization
+      parameters:
+      - description: Organization ID
+        in: header
+        name: Organization-ID
+        required: true
+        type: string
+      - description: User ID
+        in: path
+        name: userId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errors.ProblemDetail'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errors.ProblemDetail'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/errors.ProblemDetail'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/errors.ProblemDetail'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/errors.ProblemDetail'
+      summary: Remove member
+      tags:
+      - organizations
+    put:
+      consumes:
+      - application/json
+      description: Update a member's role in the organization (admin only)
+      parameters:
+      - description: Organization ID
+        in: header
+        name: Organization-ID
+        required: true
+        type: string
+      - description: User ID
+        in: path
+        name: userId
+        required: true
+        type: string
+      - description: Role update data
+        in: body
+        name: member
+        required: true
+        schema:
+          $ref: '#/definitions/models.OrganizationMemberUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.OrganizationMemberResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errors.ProblemDetail'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errors.ProblemDetail'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/errors.ProblemDetail'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/errors.ProblemDetail'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/errors.ProblemDetail'
+      summary: Update member role
+      tags:
+      - organizations
   /organizations/memberships:
     get:
       consumes:
@@ -1948,6 +1548,480 @@ paths:
       summary: Get user's organizations
       tags:
       - organizations
+  /organizations/notification-preferences:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve notification preferences for an organization. Creates
+        defaults if none exist.
+      parameters:
+      - description: Organization ID
+        in: header
+        name: Organization-ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success response with preferences
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Organization not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get organization notification preferences
+      tags:
+      - notification-preferences
+    put:
+      consumes:
+      - application/json
+      description: Bulk update notification preferences for an organization
+      parameters:
+      - description: Organization ID
+        in: header
+        name: Organization-ID
+        required: true
+        type: string
+      - description: Bulk update request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.NotificationPreferenceBulkUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success response with updated preferences
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Organization not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update organization notification preferences
+      tags:
+      - notification-preferences
+  /organizations/notification-preferences/{event}:
+    put:
+      consumes:
+      - application/json
+      description: Update a specific notification preference for an organization
+      parameters:
+      - description: Organization ID
+        in: header
+        name: Organization-ID
+        required: true
+        type: string
+      - description: Notification event type
+        in: path
+        name: event
+        required: true
+        type: string
+      - description: Update request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.NotificationPreferenceUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success response with updated preference
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Organization not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update single notification preference
+      tags:
+      - notification-preferences
+  /organizations/notification-preferences/reset:
+    post:
+      consumes:
+      - application/json
+      description: Reset all notification preferences for an organization to default
+        values
+      parameters:
+      - description: Organization ID
+        in: header
+        name: Organization-ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success response with default preferences
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Organization not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Reset preferences to defaults
+      tags:
+      - notification-preferences
+  /organizations/notifications:
+    delete:
+      consumes:
+      - application/json
+      description: Delete all notifications for the authenticated user
+      parameters:
+      - description: Organization ID
+        in: header
+        name: Organization-ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success message
+          schema:
+            $ref: '#/definitions/models.MessageResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete all notifications
+      tags:
+      - notifications
+    get:
+      consumes:
+      - application/json
+      description: Retrieve paginated list of notifications for the authenticated
+        user
+      parameters:
+      - description: Organization ID
+        in: header
+        name: Organization-ID
+        required: true
+        type: string
+      - default: 1
+        description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: 'Number of items per page (default: 10, max: 100)'
+        in: query
+        name: limit
+        type: integer
+      - default: created_at
+        description: Sort by field (title, type, read, created_at, updated_at)
+        in: query
+        name: sortBy
+        type: string
+      - default: desc
+        description: Sort order (asc, desc)
+        in: query
+        name: sortOrder
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success response with notifications and pagination
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get user notifications
+      tags:
+      - notifications
+  /organizations/notifications/{notifId}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a specific notification for the authenticated user
+      parameters:
+      - description: Organization ID
+        in: header
+        name: Organization-ID
+        required: true
+        type: string
+      - description: Notification ID
+        in: path
+        name: notifId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success message
+          schema:
+            $ref: '#/definitions/models.MessageResponse'
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Notification not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete notification
+      tags:
+      - notifications
+  /organizations/notifications/{notifId}/read:
+    put:
+      consumes:
+      - application/json
+      description: Mark a specific notification as read for the authenticated user
+      parameters:
+      - description: Organization ID
+        in: header
+        name: Organization-ID
+        required: true
+        type: string
+      - description: Notification ID
+        in: path
+        name: notifId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success message
+          schema:
+            $ref: '#/definitions/models.MessageResponse'
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Notification not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Mark notification as read
+      tags:
+      - notifications
+  /organizations/notifications/mark-all-read:
+    put:
+      consumes:
+      - application/json
+      description: Mark all notifications as read for the authenticated user
+      parameters:
+      - description: Organization ID
+        in: header
+        name: Organization-ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success message
+          schema:
+            $ref: '#/definitions/models.MessageResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Mark all notifications as read
+      tags:
+      - notifications
+  /organizations/notifications/unread:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all unread notifications for the authenticated user
+      parameters:
+      - description: Organization ID
+        in: header
+        name: Organization-ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success response with unread notifications
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get unread notifications
+      tags:
+      - notifications
+  /organizations/notifications/unread-count:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve the count of unread notifications for the authenticated
+        user
+      parameters:
+      - description: Organization ID
+        in: header
+        name: Organization-ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success response with unread count
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get unread notifications count
+      tags:
+      - notifications
 securityDefinitions:
   BearerAuth:
     description: Type "Bearer" followed by a space and JWT token.

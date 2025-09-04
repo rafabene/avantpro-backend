@@ -207,10 +207,11 @@ type OrganizationServiceInterface interface {
 // the organization repository, user repository, and email service to provide
 // complete organization functionality with proper permission checks.
 type OrganizationService struct {
-	orgRepo             repositories.OrganizationRepositoryInterface // Repository for organization data operations
-	userRepo            repositories.UserRepository                  // Repository for user data operations
-	emailService        EmailServiceInterface                        // Service for sending email notifications
-	notificationService NotificationService                          // Service for managing notifications
+	orgRepo             repositories.OrganizationRepositoryInterface  // Repository for organization data operations
+	userRepo            repositories.UserRepository                   // Repository for user data operations
+	emailService        EmailServiceInterface                         // Service for sending email notifications
+	notificationService NotificationService                           // Service for managing notifications
+	preferenceRepo      repositories.NotificationPreferenceRepository // Repository for notification preferences
 }
 
 // NewOrganizationService creates a new instance of OrganizationService.
@@ -219,15 +220,18 @@ type OrganizationService struct {
 //   - orgRepo: Repository interface for organization data operations
 //   - userRepo: Repository interface for user data operations
 //   - emailService: Service interface for sending emails
+//   - notificationService: Service for managing notifications
+//   - preferenceRepo: Repository for notification preferences
 //
 // Returns:
 //   - OrganizationServiceInterface: Configured organization service ready for use
-func NewOrganizationService(orgRepo repositories.OrganizationRepositoryInterface, userRepo repositories.UserRepository, emailService EmailServiceInterface, notificationService NotificationService) OrganizationServiceInterface {
+func NewOrganizationService(orgRepo repositories.OrganizationRepositoryInterface, userRepo repositories.UserRepository, emailService EmailServiceInterface, notificationService NotificationService, preferenceRepo repositories.NotificationPreferenceRepository) OrganizationServiceInterface {
 	return &OrganizationService{
 		orgRepo:             orgRepo,
 		userRepo:            userRepo,
 		emailService:        emailService,
 		notificationService: notificationService,
+		preferenceRepo:      preferenceRepo,
 	}
 }
 
@@ -253,6 +257,11 @@ func (s *OrganizationService) CreateOrganization(req *models.OrganizationCreateR
 
 	if err := s.orgRepo.Create(org); err != nil {
 		return nil, fmt.Errorf("failed to create organization: %w", err)
+	}
+
+	// Create default notification preferences for the organization
+	if err := s.preferenceRepo.CreateDefaults(org.ID); err != nil {
+		return nil, fmt.Errorf("failed to create default notification preferences: %w", err)
 	}
 
 	// Fetch the created organization with relations

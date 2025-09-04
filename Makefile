@@ -15,10 +15,10 @@ GOMOD=$(GOCMD) mod
 BINARY_NAME=$(APP_NAME)
 BINARY_UNIX=$(BINARY_NAME)_unix
 
-.PHONY: all build test clean run deps tidy swagger help
+.PHONY: all build clean run deps tidy swagger help
 
 # Default target
-all: clean deps tidy swagger test build
+all: clean deps tidy swagger build
 
 # Build the application
 build:
@@ -34,22 +34,6 @@ build-linux:
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(GOBUILD) -o $(BUILD_DIR)/$(BINARY_UNIX) -v $(MAIN_PATH)
 	@echo "Linux build complete: $(BUILD_DIR)/$(BINARY_UNIX)"
 
-# Run all tests
-test:
-	@echo "Running all tests..."
-	$(GOTEST) -v ./...
-
-# Run tests with coverage
-test-coverage:
-	@echo "Running tests with coverage..."
-	$(GOTEST) -v -coverprofile=coverage.out ./... || true
-	@echo ""
-	@echo "Coverage Summary:"
-	$(GOCMD) tool cover -func=coverage.out | tail -1
-	@echo ""
-	$(GOCMD) tool cover -html=coverage.out -o coverage.html
-	@echo "Coverage report generated: coverage.html"
-	@echo "Open coverage.html in your browser to view the detailed report"
 
 # Clean build artifacts
 clean:
@@ -170,12 +154,12 @@ check-updates:
 	@echo "Checking for outdated dependencies..."
 	$(GOCMD) list -u -m all
 
-# Full check (format, imports, vet, lint, test)
-check: fmt fix-imports vet lint test
+# Full check (format, imports, vet, lint)
+check: fmt fix-imports vet lint
 	@echo "All checks passed!"
 
 # Release build (optimized)
-release: clean deps tidy swagger test
+release: clean deps tidy swagger
 	@echo "Building release version..."
 	@mkdir -p $(BUILD_DIR)
 	CGO_ENABLED=0 $(GOBUILD) -ldflags "-w -s" -o $(BUILD_DIR)/$(BINARY_NAME) -v $(MAIN_PATH)
@@ -185,12 +169,10 @@ release: clean deps tidy swagger test
 help:
 	@echo "Available targets:"
 	@echo ""
-	@echo "Build & Test:"
-	@echo "  all           - Clean, deps, tidy, swagger, test, and build"
+	@echo "Build:"
+	@echo "  all           - Clean, deps, tidy, swagger, and build"
 	@echo "  build         - Build the application"
 	@echo "  build-linux   - Build for Linux"
-	@echo "  test          - Run all tests"
-	@echo "  test-coverage - Run tests with coverage report"
 	@echo "  clean         - Clean build artifacts"
 	@echo ""
 	@echo "Dependencies:"

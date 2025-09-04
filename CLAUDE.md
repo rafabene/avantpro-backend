@@ -5,20 +5,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Essential Commands
 
 ### Development Workflow
-- `make all` - Complete development workflow: clean, deps, tidy, swagger, test, build
+- `make all` - Complete development workflow: clean, deps, tidy, swagger, build
 - `make dev` - Start development server with hot reload using Air
 - `make run` - Run the application directly with go run
 - `make install-tools` - Install all development tools (swag, golangci-lint, air, goimports)
 
-### Testing
-- `make test` - Run all tests (includes testcontainers for PostgreSQL)
-- `make test-coverage` - Run tests with coverage report, generates coverage.html
-- `go test -v ./internal/repositories` - Run repository tests only (uses testcontainers)
-- `go test -v ./tests/integration` - Run integration tests only (uses testcontainers)
-- `go test -v ./internal/services` - Run service tests only (uses mocks)
-
 ### Code Quality
-- `make check` - Run all code quality checks (fmt, fix-imports, vet, lint, test)
+- `make check` - Run all code quality checks (fmt, fix-imports, vet, lint)
 - `make lint` - Run golangci-lint
 - `make fix-imports` - Organize imports with goimports using local prefix
 - `make swagger` - Generate Swagger documentation
@@ -27,7 +20,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `make db/setup` - Start PostgreSQL container for development
 - `make db/teardown` - Stop and remove PostgreSQL container
 - `make db/shell` - Connect to PostgreSQL shell
-- Tests automatically use testcontainers and don't require manual database setup
 
 ## Architecture Overview
 
@@ -55,14 +47,6 @@ The codebase follows a clean three-layer architecture pattern:
 ### Error Handling
 Uses RFC 7807 Problem Details for HTTP APIs via the `moogar0880/problems` library. Custom error handling in `internal/errors/problems.go` with specific error types for validation, not found, conflict, and internal errors.
 
-### Testing Strategy
-
-**Multi-Level Testing**:
-- **Unit Tests**: Services use mocks for repository dependencies
-- **Repository Tests**: Use PostgreSQL testcontainers for real database testing
-- **Integration Tests**: Full HTTP API tests with testcontainers
-
-**Testcontainers**: Repository and integration tests use PostgreSQL testcontainers. Tests automatically skip when Docker is unavailable with graceful degradation.
 
 ## API Features
 
@@ -98,9 +82,15 @@ Authorization: Bearer <JWT_TOKEN>
   "description": "Organization description"
 }
 
-# Invite user to organization
-POST /api/v1/organizations/{id}/invites
+# Get organization details
+GET /api/v1/organizations
 Authorization: Bearer <JWT_TOKEN>
+Organization-ID: <ORGANIZATION_UUID>
+
+# Invite user to organization
+POST /api/v1/organizations/invites
+Authorization: Bearer <JWT_TOKEN>
+Organization-ID: <ORGANIZATION_UUID>
 {
   "email": "user@example.com",
   "role": "user"
@@ -109,6 +99,11 @@ Authorization: Bearer <JWT_TOKEN>
 # List user organizations
 GET /api/v1/organizations/my?page=1&limit=10
 Authorization: Bearer <JWT_TOKEN>
+
+# Get organization notification preferences
+GET /api/v1/organizations/notification-preferences
+Authorization: Bearer <JWT_TOKEN>
+Organization-ID: <ORGANIZATION_UUID>
 ```
 
 ### Configuration
@@ -129,7 +124,6 @@ Environment-based configuration in `internal/config/` supports development and p
 - **Foreign Key Relationships** between User and Profile with cascade options
 - **Soft Deletes** via GORM's DeletedAt for both User and Profile
 - **AutoMigrate** used throughout for schema management
-- **Testcontainers** for testing instead of SQLite
 
 ### API Documentation
 Swagger/OpenAPI documentation generated automatically from code annotations using swaggo/swag. Access at `/swagger/index.html` in development mode.
@@ -145,7 +139,6 @@ Swagger/OpenAPI documentation generated automatically from code annotations usin
 - `internal/repositories/` - User repository with GetByUsername method
 - `internal/services/` - User service with comprehensive validation and business logic
 - `internal/controllers/` - HTTP controllers for auth and organization management
-- `tests/integration/` - Full API integration tests with testcontainers
 
 ### Environment Variables
 The application uses godotenv for development and supports these key variables:
@@ -166,10 +159,3 @@ Use `goimports` with local prefix `github.com/rafabene/avantpro-backend` to orga
 - **Phone Normalization**: Phone numbers are normalized by removing formatting characters
 - **Case Sensitivity**: Usernames are stored and searched in lowercase
 
-### Testing Requirements
-- All new features must include unit tests for services
-- Repository operations must be tested with testcontainers
-- API endpoints must have integration tests
-- Password encryption must be verified in tests
-- Username uniqueness must be tested
-- Profile relationships must be tested

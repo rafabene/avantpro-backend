@@ -12,56 +12,56 @@ import (
 )
 
 // NotificationPreferenceService interface defines notification preference management operations.
-// This interface provides methods for managing user notification preferences.
+// This interface provides methods for managing organization notification preferences.
 type NotificationPreferenceService interface {
-	// GetUserPreferences retrieves all notification preferences for a user.
+	// GetOrganizationPreferences retrieves all notification preferences for an organization.
 	// If no preferences exist, creates and returns default preferences.
 	// Parameters:
-	//   - userID: ID of the user to get preferences for
+	//   - organizationID: ID of the organization to get preferences for
 	// Returns:
-	//   - []models.NotificationPreferenceResponse: List of user preferences
+	//   - []models.NotificationPreferenceResponse: List of organization preferences
 	//   - error: Error if retrieval or creation fails
-	GetUserPreferences(userID uuid.UUID) ([]models.NotificationPreferenceResponse, error)
+	GetOrganizationPreferences(organizationID uuid.UUID) ([]models.NotificationPreferenceResponse, error)
 
-	// UpdateUserPreferences updates notification preferences for a user using bulk update.
+	// UpdateOrganizationPreferences updates notification preferences for an organization using bulk update.
 	// This method allows updating multiple preferences at once.
 	// Parameters:
-	//   - userID: ID of the user to update preferences for
+	//   - organizationID: ID of the organization to update preferences for
 	//   - req: Bulk update request containing preference updates
 	// Returns:
 	//   - []models.NotificationPreferenceResponse: Updated preferences
 	//   - error: Error if validation fails or update fails
-	UpdateUserPreferences(userID uuid.UUID, req *models.NotificationPreferenceBulkUpdateRequest) ([]models.NotificationPreferenceResponse, error)
+	UpdateOrganizationPreferences(organizationID uuid.UUID, req *models.NotificationPreferenceBulkUpdateRequest) ([]models.NotificationPreferenceResponse, error)
 
 	// UpdateSinglePreference updates a single notification preference.
 	// This method allows updating individual preference settings.
 	// Parameters:
-	//   - userID: ID of the user (for authorization)
+	//   - organizationID: ID of the organization
 	//   - event: The notification event type to update
 	//   - req: Update request containing new preference values
 	// Returns:
 	//   - *models.NotificationPreferenceResponse: Updated preference
 	//   - error: Error if preference not found or update fails
-	UpdateSinglePreference(userID uuid.UUID, event models.NotificationEvent, req *models.NotificationPreferenceUpdateRequest) (*models.NotificationPreferenceResponse, error)
+	UpdateSinglePreference(organizationID uuid.UUID, event models.NotificationEvent, req *models.NotificationPreferenceUpdateRequest) (*models.NotificationPreferenceResponse, error)
 
-	// ResetToDefaults resets all user preferences to default values.
+	// ResetToDefaults resets all organization preferences to default values.
 	// This method deletes existing preferences and creates new default ones.
 	// Parameters:
-	//   - userID: ID of the user to reset preferences for
+	//   - organizationID: ID of the organization to reset preferences for
 	// Returns:
 	//   - []models.NotificationPreferenceResponse: Default preferences
 	//   - error: Error if reset fails
-	ResetToDefaults(userID uuid.UUID) ([]models.NotificationPreferenceResponse, error)
+	ResetToDefaults(organizationID uuid.UUID) ([]models.NotificationPreferenceResponse, error)
 
-	// IsEventEnabledForUser checks if a specific notification event is enabled for a user.
+	// IsEventEnabledForOrganization checks if a specific notification event is enabled for an organization.
 	// This method is used by the notification service to check if notifications should be sent.
 	// Parameters:
-	//   - userID: ID of the user to check
+	//   - organizationID: ID of the organization to check
 	//   - event: The notification event type to check
 	// Returns:
-	//   - bool: True if the event is enabled for the user
+	//   - bool: True if the event is enabled for the organization
 	//   - error: Error if check fails
-	IsEventEnabledForUser(userID uuid.UUID, event models.NotificationEvent) (bool, error)
+	IsEventEnabledForOrganization(organizationID uuid.UUID, event models.NotificationEvent) (bool, error)
 
 	// GetAvailableEvents returns all available notification events with descriptions.
 	// This method provides metadata about notification types for UI display.
@@ -69,10 +69,10 @@ type NotificationPreferenceService interface {
 	//   - map[models.NotificationEvent]string: Event to description mapping
 	GetAvailableEvents() map[models.NotificationEvent]string
 
-	// GenerateTestNotification creates a test notification for a user.
+	// GenerateTestNotification creates a test notification for an organization.
 	// This method allows users to test their notification settings.
 	// Parameters:
-	//   - userID: ID of the user to send test notification to
+	//   - userID: ID of the user sending the test
 	//   - req: Test notification request containing title, message, and type
 	// Returns:
 	//   - *models.NotificationResponse: Created test notification
@@ -84,7 +84,7 @@ type NotificationPreferenceService interface {
 type notificationPreferenceService struct {
 	preferenceRepo      repositories.NotificationPreferenceRepository
 	notificationRepo    repositories.NotificationRepository
-	userRepo            repositories.UserRepository
+	organizationRepo    repositories.OrganizationRepositoryInterface
 	notificationService NotificationService
 }
 
@@ -92,42 +92,42 @@ type notificationPreferenceService struct {
 func NewNotificationPreferenceService(
 	preferenceRepo repositories.NotificationPreferenceRepository,
 	notificationRepo repositories.NotificationRepository,
-	userRepo repositories.UserRepository,
+	organizationRepo repositories.OrganizationRepositoryInterface,
 	notificationService NotificationService,
 ) NotificationPreferenceService {
 	return &notificationPreferenceService{
 		preferenceRepo:      preferenceRepo,
 		notificationRepo:    notificationRepo,
-		userRepo:            userRepo,
+		organizationRepo:    organizationRepo,
 		notificationService: notificationService,
 	}
 }
 
-// GetUserPreferences retrieves all notification preferences for a user
-func (s *notificationPreferenceService) GetUserPreferences(userID uuid.UUID) ([]models.NotificationPreferenceResponse, error) {
-	// Validate user exists
-	_, err := s.userRepo.GetByID(userID)
+// GetOrganizationPreferences retrieves all notification preferences for an organization
+func (s *notificationPreferenceService) GetOrganizationPreferences(organizationID uuid.UUID) ([]models.NotificationPreferenceResponse, error) {
+	// Validate organization exists
+	_, err := s.organizationRepo.GetByID(organizationID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.New("user not found")
+			return nil, errors.New("organization not found")
 		}
-		return nil, fmt.Errorf("failed to validate user: %w", err)
+		return nil, fmt.Errorf("failed to validate organization: %w", err)
 	}
 
 	// Get existing preferences
-	preferences, err := s.preferenceRepo.GetByUserID(userID)
+	preferences, err := s.preferenceRepo.GetByOrganizationID(organizationID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get user preferences: %w", err)
+		return nil, fmt.Errorf("failed to get organization preferences: %w", err)
 	}
 
 	// If no preferences exist, create defaults
 	if len(preferences) == 0 {
-		if err := s.preferenceRepo.CreateDefaults(userID); err != nil {
+		if err := s.preferenceRepo.CreateDefaults(organizationID); err != nil {
 			return nil, fmt.Errorf("failed to create default preferences: %w", err)
 		}
 
 		// Retrieve the newly created defaults
-		preferences, err = s.preferenceRepo.GetByUserID(userID)
+		preferences, err = s.preferenceRepo.GetByOrganizationID(organizationID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get default preferences: %w", err)
 		}
@@ -148,15 +148,15 @@ func (s *notificationPreferenceService) GetUserPreferences(userID uuid.UUID) ([]
 	return responses, nil
 }
 
-// UpdateUserPreferences updates notification preferences for a user using bulk update
-func (s *notificationPreferenceService) UpdateUserPreferences(userID uuid.UUID, req *models.NotificationPreferenceBulkUpdateRequest) ([]models.NotificationPreferenceResponse, error) {
-	// Validate user exists
-	_, err := s.userRepo.GetByID(userID)
+// UpdateOrganizationPreferences updates notification preferences for an organization using bulk update
+func (s *notificationPreferenceService) UpdateOrganizationPreferences(organizationID uuid.UUID, req *models.NotificationPreferenceBulkUpdateRequest) ([]models.NotificationPreferenceResponse, error) {
+	// Validate organization exists
+	_, err := s.organizationRepo.GetByID(organizationID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.New("user not found")
+			return nil, errors.New("organization not found")
 		}
-		return nil, fmt.Errorf("failed to validate user: %w", err)
+		return nil, fmt.Errorf("failed to validate organization: %w", err)
 	}
 
 	// Validate all events are valid
@@ -167,30 +167,30 @@ func (s *notificationPreferenceService) UpdateUserPreferences(userID uuid.UUID, 
 	}
 
 	// Perform bulk update
-	if err := s.preferenceRepo.BulkUpdate(userID, req.Preferences); err != nil {
+	if err := s.preferenceRepo.BulkUpdate(organizationID, req.Preferences); err != nil {
 		return nil, fmt.Errorf("failed to update preferences: %w", err)
 	}
 
 	// Return updated preferences
-	return s.GetUserPreferences(userID)
+	return s.GetOrganizationPreferences(organizationID)
 }
 
 // UpdateSinglePreference updates a single notification preference
-func (s *notificationPreferenceService) UpdateSinglePreference(userID uuid.UUID, event models.NotificationEvent, req *models.NotificationPreferenceUpdateRequest) (*models.NotificationPreferenceResponse, error) {
+func (s *notificationPreferenceService) UpdateSinglePreference(organizationID uuid.UUID, event models.NotificationEvent, req *models.NotificationPreferenceUpdateRequest) (*models.NotificationPreferenceResponse, error) {
 	// Validate event
 	if !event.IsValid() {
 		return nil, fmt.Errorf("invalid notification event: %s", event)
 	}
 
 	// Get existing preference
-	preference, err := s.preferenceRepo.GetByUserIDAndEvent(userID, event)
+	preference, err := s.preferenceRepo.GetByOrganizationIDAndEvent(organizationID, event)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			// Create new preference if it doesn't exist
 			preference = &models.NotificationPreference{
-				UserID:  userID,
-				Event:   event,
-				Enabled: true, // Default enabled
+				OrganizationID: organizationID,
+				Event:          event,
+				Enabled:        true, // Default enabled
 			}
 		} else {
 			return nil, fmt.Errorf("failed to get preference: %w", err)
@@ -219,34 +219,34 @@ func (s *notificationPreferenceService) UpdateSinglePreference(userID uuid.UUID,
 	return response, nil
 }
 
-// ResetToDefaults resets all user preferences to default values
-func (s *notificationPreferenceService) ResetToDefaults(userID uuid.UUID) ([]models.NotificationPreferenceResponse, error) {
-	// Validate user exists
-	_, err := s.userRepo.GetByID(userID)
+// ResetToDefaults resets all organization preferences to default values
+func (s *notificationPreferenceService) ResetToDefaults(organizationID uuid.UUID) ([]models.NotificationPreferenceResponse, error) {
+	// Validate organization exists
+	_, err := s.organizationRepo.GetByID(organizationID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.New("user not found")
+			return nil, errors.New("organization not found")
 		}
-		return nil, fmt.Errorf("failed to validate user: %w", err)
+		return nil, fmt.Errorf("failed to validate organization: %w", err)
 	}
 
 	// Delete existing preferences
-	if err := s.preferenceRepo.DeleteByUserID(userID); err != nil {
+	if err := s.preferenceRepo.DeleteByOrganizationID(organizationID); err != nil {
 		return nil, fmt.Errorf("failed to delete existing preferences: %w", err)
 	}
 
 	// Create default preferences
-	if err := s.preferenceRepo.CreateDefaults(userID); err != nil {
+	if err := s.preferenceRepo.CreateDefaults(organizationID); err != nil {
 		return nil, fmt.Errorf("failed to create default preferences: %w", err)
 	}
 
 	// Return new preferences
-	return s.GetUserPreferences(userID)
+	return s.GetOrganizationPreferences(organizationID)
 }
 
-// IsEventEnabledForUser checks if a specific notification event is enabled for a user
-func (s *notificationPreferenceService) IsEventEnabledForUser(userID uuid.UUID, event models.NotificationEvent) (bool, error) {
-	return s.preferenceRepo.IsEventEnabledForUser(userID, event)
+// IsEventEnabledForOrganization checks if a specific notification event is enabled for an organization
+func (s *notificationPreferenceService) IsEventEnabledForOrganization(organizationID uuid.UUID, event models.NotificationEvent) (bool, error) {
+	return s.preferenceRepo.IsEventEnabledForOrganization(organizationID, event)
 }
 
 // GetAvailableEvents returns all available notification events with descriptions

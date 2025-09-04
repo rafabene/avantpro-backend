@@ -20,19 +20,19 @@ const (
 	NotificationEventOrganizationUpdate NotificationEvent = "organization_update"
 )
 
-// NotificationPreference represents user preferences for notification types
-// @Description User notification preferences
+// NotificationPreference represents organization preferences for notification types
+// @Description Organization notification preferences
 type NotificationPreference struct {
-	ID        uuid.UUID         `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()" example:"550e8400-e29b-41d4-a716-446655440000"`
-	UserID    uuid.UUID         `json:"user_id" gorm:"type:uuid;not null;index" example:"550e8400-e29b-41d4-a716-446655440001"`
-	Event     NotificationEvent `json:"event" gorm:"not null" validate:"required" example:"member_joined"`
-	Enabled   bool              `json:"enabled" gorm:"default:true" example:"true"`
-	CreatedAt time.Time         `json:"created_at" example:"2023-01-01T12:00:00Z"`
-	UpdatedAt time.Time         `json:"updated_at" example:"2023-01-01T12:00:00Z"`
-	DeletedAt gorm.DeletedAt    `json:"-" gorm:"index"`
+	ID             uuid.UUID         `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()" example:"550e8400-e29b-41d4-a716-446655440000"`
+	OrganizationID uuid.UUID         `json:"organization_id" gorm:"type:uuid;not null;index" example:"550e8400-e29b-41d4-a716-446655440001"`
+	Event          NotificationEvent `json:"event" gorm:"not null" validate:"required" example:"member_joined"`
+	Enabled        bool              `json:"enabled" gorm:"default:true" example:"true"`
+	CreatedAt      time.Time         `json:"created_at" example:"2023-01-01T12:00:00Z"`
+	UpdatedAt      time.Time         `json:"updated_at" example:"2023-01-01T12:00:00Z"`
+	DeletedAt      gorm.DeletedAt    `json:"-" gorm:"index"`
 
 	// Associations
-	User *User `json:"user,omitempty" gorm:"foreignKey:UserID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
+	Organization *Organization `json:"organization,omitempty" gorm:"foreignKey:OrganizationID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
 }
 
 // NotificationPreferenceResponse represents the response body for notification preference operations
@@ -73,8 +73,8 @@ type TestNotificationRequest struct {
 	Message        string           `json:"message" validate:"required,min=1,max=500" example:"This is a test notification to verify your settings"`
 }
 
-// GetDefaultNotificationPreferences returns the default notification preferences for a user
-func GetDefaultNotificationPreferences(userID uuid.UUID) []NotificationPreference {
+// GetDefaultNotificationPreferences returns the default notification preferences for an organization
+func GetDefaultNotificationPreferences(organizationID uuid.UUID) []NotificationPreference {
 	events := []NotificationEvent{
 		NotificationEventMemberJoined,
 		NotificationEventMemberLeft,
@@ -88,9 +88,9 @@ func GetDefaultNotificationPreferences(userID uuid.UUID) []NotificationPreferenc
 	preferences := make([]NotificationPreference, len(events))
 	for i, event := range events {
 		preferences[i] = NotificationPreference{
-			UserID:  userID,
-			Event:   event,
-			Enabled: true, // All notifications enabled by default
+			OrganizationID: organizationID,
+			Event:          event,
+			Enabled:        true, // All notifications enabled by default
 		}
 	}
 

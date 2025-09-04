@@ -1,13 +1,14 @@
 package controllers
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
-	"github.com/rafabene/avantpro-backend/internal/errors"
+	problemErrors "github.com/rafabene/avantpro-backend/internal/errors"
 	"github.com/rafabene/avantpro-backend/internal/middleware"
 	"github.com/rafabene/avantpro-backend/internal/models"
 	"github.com/rafabene/avantpro-backend/internal/services"
@@ -23,6 +24,21 @@ func NewOrganizationController(service services.OrganizationServiceInterface) *O
 	return &OrganizationController{
 		service: service,
 	}
+}
+
+// getOrganizationIDFromHeader extracts and validates the Organization-ID header
+func (c *OrganizationController) getOrganizationIDFromHeader(ctx *gin.Context) (uuid.UUID, error) {
+	orgIDHeader := ctx.GetHeader("Organization-ID")
+	if orgIDHeader == "" {
+		return uuid.Nil, errors.New("Organization-ID header is required")
+	}
+
+	orgID, err := uuid.Parse(orgIDHeader)
+	if err != nil {
+		return uuid.Nil, errors.New("invalid Organization-ID format")
+	}
+
+	return orgID, nil
 }
 
 // CreateOrganization creates a new organization
@@ -41,19 +57,19 @@ func (c *OrganizationController) CreateOrganization(ctx *gin.Context) {
 	// Get user ID from JWT token
 	userID, ok := middleware.GetUserIDFromContext(ctx)
 	if !ok {
-		errors.HandleUnauthorizedError(ctx, "User not authenticated")
+		problemErrors.HandleUnauthorizedError(ctx, "User not authenticated")
 		return
 	}
 
 	var req models.OrganizationCreateRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		errors.HandleValidationError(ctx, err.Error())
+		problemErrors.HandleValidationError(ctx, err.Error())
 		return
 	}
 
 	org, err := c.service.CreateOrganization(&req, userID)
 	if err != nil {
-		errors.HandleInternalError(ctx, "Failed to create organization", err)
+		problemErrors.HandleInternalError(ctx, "Failed to create organization", err)
 		return
 	}
 
@@ -67,27 +83,26 @@ func (c *OrganizationController) CreateOrganization(ctx *gin.Context) {
 // @Tags organizations
 // @Accept json
 // @Produce json
-// @Param id path string true "Organization ID"
+// @Param Organization-ID header string true "Organization ID"
 // @Success 200 {object} models.OrganizationResponse
 // @Failure 400 {object} errors.ProblemDetail
 // @Failure 404 {object} errors.ProblemDetail
 // @Failure 500 {object} errors.ProblemDetail
-// @Router /organizations/{id} [get]
+// @Router /organizations [get]
 func (c *OrganizationController) GetOrganization(ctx *gin.Context) {
-	idStr := ctx.Param("id")
-	id, err := uuid.Parse(idStr)
+	id, err := c.getOrganizationIDFromHeader(ctx)
 	if err != nil {
-		errors.HandleValidationError(ctx, "Invalid organization ID format")
+		problemErrors.HandleValidationError(ctx, err.Error())
 		return
 	}
 
 	org, err := c.service.GetOrganization(id)
 	if err != nil {
 		if err.Error() == "organization not found" {
-			errors.HandleNotFoundError(ctx, "Organization not found")
+			problemErrors.HandleNotFoundError(ctx, "Organization not found")
 			return
 		}
-		errors.HandleInternalError(ctx, "Failed to get organization", err)
+		problemErrors.HandleInternalError(ctx, "Failed to get organization", err)
 		return
 	}
 
@@ -113,7 +128,7 @@ func (c *OrganizationController) GetOrganization(ctx *gin.Context) {
 func (c *OrganizationController) GetUserOrganizations(ctx *gin.Context) {
 	userID, ok := middleware.GetUserIDFromContext(ctx)
 	if !ok {
-		errors.HandleUnauthorizedError(ctx, "User not authenticated")
+		problemErrors.HandleUnauthorizedError(ctx, "User not authenticated")
 		return
 	}
 
@@ -123,7 +138,7 @@ func (c *OrganizationController) GetUserOrganizations(ctx *gin.Context) {
 
 	orgs, total, err := c.service.GetUserOrganizations(userID, limit, offset, sortBy, sortOrder)
 	if err != nil {
-		errors.HandleInternalError(ctx, "Failed to get user organizations", err)
+		problemErrors.HandleInternalError(ctx, "Failed to get user organizations", err)
 		return
 	}
 
@@ -143,7 +158,7 @@ func (c *OrganizationController) GetUserOrganizations(ctx *gin.Context) {
 // @Tags organizations
 // @Accept json
 // @Produce json
-// @Param id path string true "Organization ID"
+// @Param Organization-ID header string true "Organization ID"
 // @Param organization body models.OrganizationUpdateRequest true "Update data"
 // @Success 200 {object} models.OrganizationResponse
 // @Failure 400 {object} errors.ProblemDetail
@@ -151,38 +166,37 @@ func (c *OrganizationController) GetUserOrganizations(ctx *gin.Context) {
 // @Failure 403 {object} errors.ProblemDetail
 // @Failure 404 {object} errors.ProblemDetail
 // @Failure 500 {object} errors.ProblemDetail
-// @Router /organizations/{id} [put]
+// @Router /organizations [put]
 func (c *OrganizationController) UpdateOrganization(ctx *gin.Context) {
-	idStr := ctx.Param("id")
-	id, err := uuid.Parse(idStr)
+	id, err := c.getOrganizationIDFromHeader(ctx)
 	if err != nil {
-		errors.HandleValidationError(ctx, "Invalid organization ID format")
+		problemErrors.HandleValidationError(ctx, err.Error())
 		return
 	}
 
 	userID, ok := middleware.GetUserIDFromContext(ctx)
 	if !ok {
-		errors.HandleUnauthorizedError(ctx, "User not authenticated")
+		problemErrors.HandleUnauthorizedError(ctx, "User not authenticated")
 		return
 	}
 
 	var req models.OrganizationUpdateRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		errors.HandleValidationError(ctx, err.Error())
+		problemErrors.HandleValidationError(ctx, err.Error())
 		return
 	}
 
 	org, err := c.service.UpdateOrganization(id, &req, userID)
 	if err != nil {
 		if err.Error() == "organization not found" {
-			errors.HandleNotFoundError(ctx, "Organization not found")
+			problemErrors.HandleNotFoundError(ctx, "Organization not found")
 			return
 		}
 		if err.Error() == "insufficient permissions: only admins can update organization" {
-			errors.HandleForbiddenError(ctx, "Insufficient permissions")
+			problemErrors.HandleForbiddenError(ctx, "Insufficient permissions")
 			return
 		}
-		errors.HandleInternalError(ctx, "Failed to update organization", err)
+		problemErrors.HandleInternalError(ctx, "Failed to update organization", err)
 		return
 	}
 
@@ -196,39 +210,38 @@ func (c *OrganizationController) UpdateOrganization(ctx *gin.Context) {
 // @Tags organizations
 // @Accept json
 // @Produce json
-// @Param id path string true "Organization ID"
+// @Param Organization-ID header string true "Organization ID"
 // @Success 204
 // @Failure 400 {object} errors.ProblemDetail
 // @Failure 401 {object} errors.ProblemDetail
 // @Failure 403 {object} errors.ProblemDetail
 // @Failure 404 {object} errors.ProblemDetail
 // @Failure 500 {object} errors.ProblemDetail
-// @Router /organizations/{id} [delete]
+// @Router /organizations [delete]
 func (c *OrganizationController) DeleteOrganization(ctx *gin.Context) {
-	idStr := ctx.Param("id")
-	id, err := uuid.Parse(idStr)
+	id, err := c.getOrganizationIDFromHeader(ctx)
 	if err != nil {
-		errors.HandleValidationError(ctx, "Invalid organization ID format")
+		problemErrors.HandleValidationError(ctx, err.Error())
 		return
 	}
 
 	userID, ok := middleware.GetUserIDFromContext(ctx)
 	if !ok {
-		errors.HandleUnauthorizedError(ctx, "User not authenticated")
+		problemErrors.HandleUnauthorizedError(ctx, "User not authenticated")
 		return
 	}
 
 	err = c.service.DeleteOrganization(id, userID)
 	if err != nil {
 		if err.Error() == "organization not found" {
-			errors.HandleNotFoundError(ctx, "Organization not found")
+			problemErrors.HandleNotFoundError(ctx, "Organization not found")
 			return
 		}
 		if err.Error() == "insufficient permissions: only the creator can delete organization" {
-			errors.HandleForbiddenError(ctx, "Insufficient permissions")
+			problemErrors.HandleForbiddenError(ctx, "Insufficient permissions")
 			return
 		}
-		errors.HandleInternalError(ctx, "Failed to delete organization", err)
+		problemErrors.HandleInternalError(ctx, "Failed to delete organization", err)
 		return
 	}
 
@@ -241,7 +254,7 @@ func (c *OrganizationController) DeleteOrganization(ctx *gin.Context) {
 // @Tags organizations
 // @Accept json
 // @Produce json
-// @Param id path string true "Organization ID"
+// @Param Organization-ID header string true "Organization ID"
 // @Param page query int false "Page number" default(1)
 // @Param limit query int false "Items per page" default(50)
 // @Param sortBy query string false "Sort by field" default("joined_at")
@@ -252,18 +265,18 @@ func (c *OrganizationController) DeleteOrganization(ctx *gin.Context) {
 // @Failure 403 {object} errors.ProblemDetail
 // @Failure 404 {object} errors.ProblemDetail
 // @Failure 500 {object} errors.ProblemDetail
-// @Router /organizations/{id}/members [get]
+// @Router /organizations/members [get]
 func (c *OrganizationController) GetOrganizationMembers(ctx *gin.Context) {
 	idStr := ctx.Param("id")
 	orgID, err := uuid.Parse(idStr)
 	if err != nil {
-		errors.HandleValidationError(ctx, "Invalid organization ID format")
+		problemErrors.HandleValidationError(ctx, "Invalid organization ID format")
 		return
 	}
 
 	userID, ok := middleware.GetUserIDFromContext(ctx)
 	if !ok {
-		errors.HandleUnauthorizedError(ctx, "User not authenticated")
+		problemErrors.HandleUnauthorizedError(ctx, "User not authenticated")
 		return
 	}
 
@@ -274,10 +287,10 @@ func (c *OrganizationController) GetOrganizationMembers(ctx *gin.Context) {
 	members, total, err := c.service.GetOrganizationMembers(orgID, userID, limit, offset, sortBy, sortOrder)
 	if err != nil {
 		if err.Error() == "insufficient permissions: user is not a member of this organization" {
-			errors.HandleForbiddenError(ctx, "Insufficient permissions")
+			problemErrors.HandleForbiddenError(ctx, "Insufficient permissions")
 			return
 		}
-		errors.HandleInternalError(ctx, "Failed to get organization members", err)
+		problemErrors.HandleInternalError(ctx, "Failed to get organization members", err)
 		return
 	}
 
@@ -297,7 +310,7 @@ func (c *OrganizationController) GetOrganizationMembers(ctx *gin.Context) {
 // @Tags organizations
 // @Accept json
 // @Produce json
-// @Param id path string true "Organization ID"
+// @Param Organization-ID header string true "Organization ID"
 // @Param userId path string true "User ID"
 // @Param member body models.OrganizationMemberUpdateRequest true "Role update data"
 // @Success 200 {object} models.OrganizationMemberResponse
@@ -306,46 +319,45 @@ func (c *OrganizationController) GetOrganizationMembers(ctx *gin.Context) {
 // @Failure 403 {object} errors.ProblemDetail
 // @Failure 404 {object} errors.ProblemDetail
 // @Failure 500 {object} errors.ProblemDetail
-// @Router /organizations/{id}/members/{userId} [put]
+// @Router /organizations/members/{userId} [put]
 func (c *OrganizationController) UpdateMemberRole(ctx *gin.Context) {
-	orgIDStr := ctx.Param("id")
-	orgID, err := uuid.Parse(orgIDStr)
+	orgID, err := c.getOrganizationIDFromHeader(ctx)
 	if err != nil {
-		errors.HandleValidationError(ctx, "Invalid organization ID format")
+		problemErrors.HandleValidationError(ctx, err.Error())
 		return
 	}
 
 	memberUserIDStr := ctx.Param("userId")
 	memberUserID, err := uuid.Parse(memberUserIDStr)
 	if err != nil {
-		errors.HandleValidationError(ctx, "Invalid user ID format")
+		problemErrors.HandleValidationError(ctx, "Invalid user ID format")
 		return
 	}
 
 	userID, ok := middleware.GetUserIDFromContext(ctx)
 	if !ok {
-		errors.HandleUnauthorizedError(ctx, "User not authenticated")
+		problemErrors.HandleUnauthorizedError(ctx, "User not authenticated")
 		return
 	}
 
 	var req models.OrganizationMemberUpdateRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		errors.HandleValidationError(ctx, err.Error())
+		problemErrors.HandleValidationError(ctx, err.Error())
 		return
 	}
 
 	member, err := c.service.UpdateMemberRole(orgID, memberUserID, &req, userID)
 	if err != nil {
 		if err.Error() == "organization not found" || err.Error() == "member not found" {
-			errors.HandleNotFoundError(ctx, "Resource not found")
+			problemErrors.HandleNotFoundError(ctx, "Resource not found")
 			return
 		}
 		if err.Error() == "insufficient permissions: only admins can update member roles" ||
 			err.Error() == "cannot change role of organization creator" {
-			errors.HandleForbiddenError(ctx, "Insufficient permissions")
+			problemErrors.HandleForbiddenError(ctx, "Insufficient permissions")
 			return
 		}
-		errors.HandleInternalError(ctx, "Failed to update member role", err)
+		problemErrors.HandleInternalError(ctx, "Failed to update member role", err)
 		return
 	}
 
@@ -359,7 +371,7 @@ func (c *OrganizationController) UpdateMemberRole(ctx *gin.Context) {
 // @Tags organizations
 // @Accept json
 // @Produce json
-// @Param id path string true "Organization ID"
+// @Param Organization-ID header string true "Organization ID"
 // @Param userId path string true "User ID"
 // @Success 204
 // @Failure 400 {object} errors.ProblemDetail
@@ -367,40 +379,39 @@ func (c *OrganizationController) UpdateMemberRole(ctx *gin.Context) {
 // @Failure 403 {object} errors.ProblemDetail
 // @Failure 404 {object} errors.ProblemDetail
 // @Failure 500 {object} errors.ProblemDetail
-// @Router /organizations/{id}/members/{userId} [delete]
+// @Router /organizations/members/{userId} [delete]
 func (c *OrganizationController) RemoveMember(ctx *gin.Context) {
-	orgIDStr := ctx.Param("id")
-	orgID, err := uuid.Parse(orgIDStr)
+	orgID, err := c.getOrganizationIDFromHeader(ctx)
 	if err != nil {
-		errors.HandleValidationError(ctx, "Invalid organization ID format")
+		problemErrors.HandleValidationError(ctx, err.Error())
 		return
 	}
 
 	memberUserIDStr := ctx.Param("userId")
 	memberUserID, err := uuid.Parse(memberUserIDStr)
 	if err != nil {
-		errors.HandleValidationError(ctx, "Invalid user ID format")
+		problemErrors.HandleValidationError(ctx, "Invalid user ID format")
 		return
 	}
 
 	userID, ok := middleware.GetUserIDFromContext(ctx)
 	if !ok {
-		errors.HandleUnauthorizedError(ctx, "User not authenticated")
+		problemErrors.HandleUnauthorizedError(ctx, "User not authenticated")
 		return
 	}
 
 	err = c.service.RemoveMember(orgID, memberUserID, userID)
 	if err != nil {
 		if err.Error() == "organization not found" || err.Error() == "member not found" {
-			errors.HandleNotFoundError(ctx, "Resource not found")
+			problemErrors.HandleNotFoundError(ctx, "Resource not found")
 			return
 		}
 		if err.Error() == "cannot remove organization creator" ||
 			err.Error() == "insufficient permissions: only admins can remove other members" {
-			errors.HandleForbiddenError(ctx, "Insufficient permissions")
+			problemErrors.HandleForbiddenError(ctx, "Insufficient permissions")
 			return
 		}
-		errors.HandleInternalError(ctx, "Failed to remove member", err)
+		problemErrors.HandleInternalError(ctx, "Failed to remove member", err)
 		return
 	}
 
@@ -413,7 +424,7 @@ func (c *OrganizationController) RemoveMember(ctx *gin.Context) {
 // @Tags organizations
 // @Accept json
 // @Produce json
-// @Param id path string true "Organization ID"
+// @Param Organization-ID header string true "Organization ID"
 // @Param invitation body models.OrganizationInviteRequest true "Invitation data"
 // @Success 201 {object} models.OrganizationInviteResponse
 // @Failure 400 {object} errors.ProblemDetail
@@ -421,43 +432,42 @@ func (c *OrganizationController) RemoveMember(ctx *gin.Context) {
 // @Failure 403 {object} errors.ProblemDetail
 // @Failure 404 {object} errors.ProblemDetail
 // @Failure 500 {object} errors.ProblemDetail
-// @Router /organizations/{id}/invites [post]
+// @Router /organizations/invites [post]
 func (c *OrganizationController) InviteUser(ctx *gin.Context) {
-	orgIDStr := ctx.Param("id")
-	orgID, err := uuid.Parse(orgIDStr)
+	orgID, err := c.getOrganizationIDFromHeader(ctx)
 	if err != nil {
-		errors.HandleValidationError(ctx, "Invalid organization ID format")
+		problemErrors.HandleValidationError(ctx, err.Error())
 		return
 	}
 
 	userID, ok := middleware.GetUserIDFromContext(ctx)
 	if !ok {
-		errors.HandleUnauthorizedError(ctx, "User not authenticated")
+		problemErrors.HandleUnauthorizedError(ctx, "User not authenticated")
 		return
 	}
 
 	var req models.OrganizationInviteRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		errors.HandleValidationError(ctx, err.Error())
+		problemErrors.HandleValidationError(ctx, err.Error())
 		return
 	}
 
 	invite, err := c.service.InviteUser(orgID, &req, userID)
 	if err != nil {
 		if err.Error() == "organization not found" {
-			errors.HandleNotFoundError(ctx, "Organization not found")
+			problemErrors.HandleNotFoundError(ctx, "Organization not found")
 			return
 		}
 		if err.Error() == "insufficient permissions: only admins can send invitations" {
-			errors.HandleForbiddenError(ctx, "Insufficient permissions")
+			problemErrors.HandleForbiddenError(ctx, "Insufficient permissions")
 			return
 		}
 		if err.Error() == "user is already a member of this organization" ||
 			err.Error() == "invitation already pending for this email" {
-			errors.HandleConflictError(ctx, err.Error())
+			problemErrors.HandleConflictError(ctx, err.Error())
 			return
 		}
-		errors.HandleInternalError(ctx, "Failed to send invitation", err)
+		problemErrors.HandleInternalError(ctx, "Failed to send invitation", err)
 		return
 	}
 
@@ -471,7 +481,7 @@ func (c *OrganizationController) InviteUser(ctx *gin.Context) {
 // @Tags organizations
 // @Accept json
 // @Produce json
-// @Param id path string true "Organization ID"
+// @Param Organization-ID header string true "Organization ID"
 // @Param page query int false "Page number" default(1)
 // @Param limit query int false "Items per page" default(50)
 // @Param sortBy query string false "Sort by field" default("created_at")
@@ -482,18 +492,17 @@ func (c *OrganizationController) InviteUser(ctx *gin.Context) {
 // @Failure 403 {object} errors.ProblemDetail
 // @Failure 404 {object} errors.ProblemDetail
 // @Failure 500 {object} errors.ProblemDetail
-// @Router /organizations/{id}/invites [get]
+// @Router /organizations/invites [get]
 func (c *OrganizationController) GetOrganizationInvites(ctx *gin.Context) {
-	orgIDStr := ctx.Param("id")
-	orgID, err := uuid.Parse(orgIDStr)
+	orgID, err := c.getOrganizationIDFromHeader(ctx)
 	if err != nil {
-		errors.HandleValidationError(ctx, "Invalid organization ID format")
+		problemErrors.HandleValidationError(ctx, err.Error())
 		return
 	}
 
 	userID, ok := middleware.GetUserIDFromContext(ctx)
 	if !ok {
-		errors.HandleUnauthorizedError(ctx, "User not authenticated")
+		problemErrors.HandleUnauthorizedError(ctx, "User not authenticated")
 		return
 	}
 
@@ -504,14 +513,14 @@ func (c *OrganizationController) GetOrganizationInvites(ctx *gin.Context) {
 	invites, total, err := c.service.GetOrganizationInvites(orgID, userID, limit, offset, sortBy, sortOrder)
 	if err != nil {
 		if err.Error() == "organization not found" {
-			errors.HandleNotFoundError(ctx, "Organization not found")
+			problemErrors.HandleNotFoundError(ctx, "Organization not found")
 			return
 		}
 		if err.Error() == "insufficient permissions: only admins can view invitations" {
-			errors.HandleForbiddenError(ctx, "Insufficient permissions")
+			problemErrors.HandleForbiddenError(ctx, "Insufficient permissions")
 			return
 		}
-		errors.HandleInternalError(ctx, "Failed to get organization invitations", err)
+		problemErrors.HandleInternalError(ctx, "Failed to get organization invitations", err)
 		return
 	}
 
@@ -542,36 +551,36 @@ func (c *OrganizationController) GetOrganizationInvites(ctx *gin.Context) {
 func (c *OrganizationController) AcceptInvite(ctx *gin.Context) {
 	token := ctx.Param("token")
 	if token == "" {
-		errors.HandleValidationError(ctx, "Invitation token required")
+		problemErrors.HandleValidationError(ctx, "Invitation token required")
 		return
 	}
 
 	userID, ok := middleware.GetUserIDFromContext(ctx)
 	if !ok {
-		errors.HandleUnauthorizedError(ctx, "User not authenticated")
+		problemErrors.HandleUnauthorizedError(ctx, "User not authenticated")
 		return
 	}
 
 	member, err := c.service.AcceptInvite(token, userID)
 	if err != nil {
 		if err.Error() == "invitation not found" {
-			errors.HandleNotFoundError(ctx, "Invitation not found")
+			problemErrors.HandleNotFoundError(ctx, "Invitation not found")
 			return
 		}
 		if err.Error() == "invitation is no longer valid" || err.Error() == "invitation has expired" {
-			errors.HandleGoneError(ctx, err.Error())
+			problemErrors.HandleGoneError(ctx, err.Error())
 			return
 		}
 		if err.Error() == "user not found" {
-			errors.HandleNotFoundError(ctx, "User not found")
+			problemErrors.HandleNotFoundError(ctx, "User not found")
 			return
 		}
 		if err.Error() == "invitation email does not match user email" ||
 			err.Error() == "user is already a member of this organization" {
-			errors.HandleConflictError(ctx, err.Error())
+			problemErrors.HandleConflictError(ctx, err.Error())
 			return
 		}
-		errors.HandleInternalError(ctx, "Failed to accept invitation", err)
+		problemErrors.HandleInternalError(ctx, "Failed to accept invitation", err)
 		return
 	}
 
@@ -592,21 +601,21 @@ func (c *OrganizationController) AcceptInvite(ctx *gin.Context) {
 func (c *OrganizationController) ValidateInvite(ctx *gin.Context) {
 	token := ctx.Param("token")
 	if token == "" {
-		errors.HandleValidationError(ctx, "Invitation token required")
+		problemErrors.HandleValidationError(ctx, "Invitation token required")
 		return
 	}
 
 	result, err := c.service.ValidateInvite(token)
 	if err != nil {
 		if err.Error() == "invitation not found" {
-			errors.HandleNotFoundError(ctx, "Invitation not found")
+			problemErrors.HandleNotFoundError(ctx, "Invitation not found")
 			return
 		}
 		if err.Error() == "invitation is no longer valid" || err.Error() == "invitation has expired" {
-			errors.HandleGoneError(ctx, err.Error())
+			problemErrors.HandleGoneError(ctx, err.Error())
 			return
 		}
-		errors.HandleInternalError(ctx, "Failed to validate invitation", err)
+		problemErrors.HandleInternalError(ctx, "Failed to validate invitation", err)
 		return
 	}
 
@@ -631,27 +640,27 @@ func (c *OrganizationController) RevokeInvite(ctx *gin.Context) {
 	inviteIDStr := ctx.Param("inviteId")
 	inviteID, err := uuid.Parse(inviteIDStr)
 	if err != nil {
-		errors.HandleValidationError(ctx, "Invalid invitation ID format")
+		problemErrors.HandleValidationError(ctx, "Invalid invitation ID format")
 		return
 	}
 
 	userID, ok := middleware.GetUserIDFromContext(ctx)
 	if !ok {
-		errors.HandleUnauthorizedError(ctx, "User not authenticated")
+		problemErrors.HandleUnauthorizedError(ctx, "User not authenticated")
 		return
 	}
 
 	err = c.service.RevokeInvite(inviteID, userID)
 	if err != nil {
 		if err.Error() == "invitation not found" || err.Error() == "organization not found" {
-			errors.HandleNotFoundError(ctx, "Resource not found")
+			problemErrors.HandleNotFoundError(ctx, "Resource not found")
 			return
 		}
 		if err.Error() == "insufficient permissions: only admins can revoke invitations" {
-			errors.HandleForbiddenError(ctx, "Insufficient permissions")
+			problemErrors.HandleForbiddenError(ctx, "Insufficient permissions")
 			return
 		}
-		errors.HandleInternalError(ctx, "Failed to revoke invitation", err)
+		problemErrors.HandleInternalError(ctx, "Failed to revoke invitation", err)
 		return
 	}
 
@@ -676,7 +685,7 @@ func (c *OrganizationController) RevokeInvite(ctx *gin.Context) {
 func (c *OrganizationController) GetUserMemberships(ctx *gin.Context) {
 	userID, ok := middleware.GetUserIDFromContext(ctx)
 	if !ok {
-		errors.HandleUnauthorizedError(ctx, "User not authenticated")
+		problemErrors.HandleUnauthorizedError(ctx, "User not authenticated")
 		return
 	}
 
@@ -686,7 +695,7 @@ func (c *OrganizationController) GetUserMemberships(ctx *gin.Context) {
 
 	memberships, total, err := c.service.GetUserMemberships(userID, limit, offset, sortBy, sortOrder)
 	if err != nil {
-		errors.HandleInternalError(ctx, "Failed to get user memberships", err)
+		problemErrors.HandleInternalError(ctx, "Failed to get user memberships", err)
 		return
 	}
 
@@ -866,31 +875,31 @@ func (c *OrganizationController) ResendInvite(ctx *gin.Context) {
 	inviteIDStr := ctx.Param("inviteId")
 	inviteID, err := uuid.Parse(inviteIDStr)
 	if err != nil {
-		errors.HandleValidationError(ctx, "Invalid invitation ID format")
+		problemErrors.HandleValidationError(ctx, "Invalid invitation ID format")
 		return
 	}
 
 	userID, ok := middleware.GetUserIDFromContext(ctx)
 	if !ok {
-		errors.HandleUnauthorizedError(ctx, "User not authenticated")
+		problemErrors.HandleUnauthorizedError(ctx, "User not authenticated")
 		return
 	}
 
 	invite, err := c.service.ResendInvite(inviteID, userID)
 	if err != nil {
 		if err.Error() == "invitation not found" || err.Error() == "organization not found" {
-			errors.HandleNotFoundError(ctx, "Resource not found")
+			problemErrors.HandleNotFoundError(ctx, "Resource not found")
 			return
 		}
 		if err.Error() == "insufficient permissions: only admins can resend invitations" {
-			errors.HandleForbiddenError(ctx, "Insufficient permissions")
+			problemErrors.HandleForbiddenError(ctx, "Insufficient permissions")
 			return
 		}
 		if err.Error() == "can only resend pending invitations" {
-			errors.HandleValidationError(ctx, "Can only resend pending invitations")
+			problemErrors.HandleValidationError(ctx, "Can only resend pending invitations")
 			return
 		}
-		errors.HandleInternalError(ctx, "Failed to resend invitation", err)
+		problemErrors.HandleInternalError(ctx, "Failed to resend invitation", err)
 		return
 	}
 

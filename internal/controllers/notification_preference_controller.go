@@ -1,12 +1,13 @@
 package controllers
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
-	"github.com/rafabene/avantpro-backend/internal/errors"
+	problemErrors "github.com/rafabene/avantpro-backend/internal/errors"
 	"github.com/rafabene/avantpro-backend/internal/models"
 	"github.com/rafabene/avantpro-backend/internal/services"
 )
@@ -23,36 +24,61 @@ func NewNotificationPreferenceController(preferenceService services.Notification
 	}
 }
 
-// GetUserPreferences retrieves notification preferences for the authenticated user
-// @Summary Get user notification preferences
-// @Description Retrieve notification preferences for the authenticated user. Creates defaults if none exist.
+// getOrganizationIDFromHeader extracts and validates the Organization-ID header
+func (c *NotificationPreferenceController) getOrganizationIDFromHeader(ctx *gin.Context) (uuid.UUID, error) {
+	orgIDHeader := ctx.GetHeader("Organization-ID")
+	if orgIDHeader == "" {
+		return uuid.Nil, errors.New("Organization-ID header is required")
+	}
+
+	orgID, err := uuid.Parse(orgIDHeader)
+	if err != nil {
+		return uuid.Nil, errors.New("invalid Organization-ID format")
+	}
+
+	return orgID, nil
+}
+
+// GetOrganizationPreferences retrieves notification preferences for an organization
+// @Summary Get organization notification preferences
+// @Description Retrieve notification preferences for an organization. Creates defaults if none exist.
 // @Tags notification-preferences
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @Param Organization-ID header string true "Organization ID"
 // @Success 200 {object} map[string]interface{} "Success response with preferences"
 // @Failure 401 {object} map[string]interface{} "Unauthorized"
+// @Failure 404 {object} map[string]interface{} "Organization not found"
 // @Failure 500 {object} map[string]interface{} "Internal server error"
-// @Router /notification-preferences [get]
-func (c *NotificationPreferenceController) GetUserPreferences(ctx *gin.Context) {
-	// Get user ID from JWT middleware
-	userID, exists := ctx.Get("userID")
+// @Router /organizations/notification-preferences [get]
+func (c *NotificationPreferenceController) GetOrganizationPreferences(ctx *gin.Context) {
+	// Get user ID from JWT middleware (for authentication)
+	_, exists := ctx.Get("userID")
 	if !exists {
-		prob := errors.UnauthorizedError("User not authenticated", errors.GetInstance(ctx))
-		errors.RespondWithProblem(ctx, prob)
+		prob := problemErrors.UnauthorizedError("User not authenticated", problemErrors.GetInstance(ctx))
+		problemErrors.RespondWithProblem(ctx, prob)
+		return
+	}
+
+	// Get organization ID from header
+	organizationUUID, err := c.getOrganizationIDFromHeader(ctx)
+	if err != nil {
+		prob := problemErrors.ValidationError(err.Error(), problemErrors.GetInstance(ctx))
+		problemErrors.RespondWithProblem(ctx, prob)
 		return
 	}
 
 	// Get preferences
-	preferences, err := c.preferenceService.GetUserPreferences(userID.(uuid.UUID))
+	preferences, err := c.preferenceService.GetOrganizationPreferences(organizationUUID)
 	if err != nil {
-		if err.Error() == "user not found" {
-			prob := errors.NotFoundError("User not found", errors.GetInstance(ctx))
-			errors.RespondWithProblem(ctx, prob)
+		if err.Error() == "organization not found" {
+			prob := problemErrors.NotFoundError("Organization not found", problemErrors.GetInstance(ctx))
+			problemErrors.RespondWithProblem(ctx, prob)
 			return
 		}
-		prob := errors.InternalError(errors.GetInstance(ctx))
-		errors.RespondWithProblem(ctx, prob)
+		prob := problemErrors.InternalError(problemErrors.GetInstance(ctx))
+		problemErrors.RespondWithProblem(ctx, prob)
 		return
 	}
 
@@ -61,46 +87,56 @@ func (c *NotificationPreferenceController) GetUserPreferences(ctx *gin.Context) 
 	})
 }
 
-// UpdateUserPreferences updates notification preferences for the authenticated user
-// @Summary Update user notification preferences
-// @Description Bulk update notification preferences for the authenticated user
+// UpdateOrganizationPreferences updates notification preferences for an organization
+// @Summary Update organization notification preferences
+// @Description Bulk update notification preferences for an organization
 // @Tags notification-preferences
 // @Accept json
 // @Produce json
+// @Param Organization-ID header string true "Organization ID"
 // @Param request body models.NotificationPreferenceBulkUpdateRequest true "Bulk update request"
 // @Security BearerAuth
 // @Success 200 {object} map[string]interface{} "Success response with updated preferences"
 // @Failure 400 {object} map[string]interface{} "Bad request"
 // @Failure 401 {object} map[string]interface{} "Unauthorized"
+// @Failure 404 {object} map[string]interface{} "Organization not found"
 // @Failure 500 {object} map[string]interface{} "Internal server error"
-// @Router /notification-preferences [put]
-func (c *NotificationPreferenceController) UpdateUserPreferences(ctx *gin.Context) {
-	// Get user ID from JWT middleware
-	userID, exists := ctx.Get("userID")
+// @Router /organizations/notification-preferences [put]
+func (c *NotificationPreferenceController) UpdateOrganizationPreferences(ctx *gin.Context) {
+	// Get user ID from JWT middleware (for authentication)
+	_, exists := ctx.Get("userID")
 	if !exists {
-		prob := errors.UnauthorizedError("User not authenticated", errors.GetInstance(ctx))
-		errors.RespondWithProblem(ctx, prob)
+		prob := problemErrors.UnauthorizedError("User not authenticated", problemErrors.GetInstance(ctx))
+		problemErrors.RespondWithProblem(ctx, prob)
+		return
+	}
+
+	// Get organization ID from header
+	organizationUUID, err := c.getOrganizationIDFromHeader(ctx)
+	if err != nil {
+		prob := problemErrors.ValidationError(err.Error(), problemErrors.GetInstance(ctx))
+		problemErrors.RespondWithProblem(ctx, prob)
 		return
 	}
 
 	// Parse request body
 	var req models.NotificationPreferenceBulkUpdateRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		prob := errors.BadRequestError("Invalid JSON format: "+err.Error(), errors.GetInstance(ctx))
-		errors.RespondWithProblem(ctx, prob)
+		prob := problemErrors.BadRequestError("Invalid JSON format: "+err.Error(), problemErrors.GetInstance(ctx))
+		problemErrors.RespondWithProblem(ctx, prob)
 		return
 	}
 
 	// Update preferences
-	preferences, err := c.preferenceService.UpdateUserPreferences(userID.(uuid.UUID), &req)
+	preferences, err := c.preferenceService.UpdateOrganizationPreferences(organizationUUID, &req)
 	if err != nil {
-		if err.Error() == "user not found" {
-			prob := errors.NotFoundError("User not found", errors.GetInstance(ctx))
-			errors.RespondWithProblem(ctx, prob)
+		if err.Error() == "organization not found" {
+			prob := problemErrors.NotFoundError("Organization not found", problemErrors.GetInstance(ctx))
+			problemErrors.RespondWithProblem(ctx, prob)
 			return
 		}
-		prob := errors.BadRequestError(err.Error(), errors.GetInstance(ctx))
-		errors.RespondWithProblem(ctx, prob)
+		prob := problemErrors.BadRequestError(err.Error(), problemErrors.GetInstance(ctx))
+		problemErrors.RespondWithProblem(ctx, prob)
 		return
 	}
 
@@ -112,25 +148,34 @@ func (c *NotificationPreferenceController) UpdateUserPreferences(ctx *gin.Contex
 
 // UpdateSinglePreference updates a single notification preference
 // @Summary Update single notification preference
-// @Description Update a specific notification preference for the authenticated user
+// @Description Update a specific notification preference for an organization
 // @Tags notification-preferences
 // @Accept json
 // @Produce json
+// @Param Organization-ID header string true "Organization ID"
 // @Param event path string true "Notification event type"
 // @Param request body models.NotificationPreferenceUpdateRequest true "Update request"
 // @Security BearerAuth
 // @Success 200 {object} map[string]interface{} "Success response with updated preference"
 // @Failure 400 {object} map[string]interface{} "Bad request"
 // @Failure 401 {object} map[string]interface{} "Unauthorized"
-// @Failure 404 {object} map[string]interface{} "Preference not found"
+// @Failure 404 {object} map[string]interface{} "Organization not found"
 // @Failure 500 {object} map[string]interface{} "Internal server error"
-// @Router /notification-preferences/{event} [put]
+// @Router /organizations/notification-preferences/{event} [put]
 func (c *NotificationPreferenceController) UpdateSinglePreference(ctx *gin.Context) {
-	// Get user ID from JWT middleware
-	userID, exists := ctx.Get("userID")
+	// Get user ID from JWT middleware (for authentication)
+	_, exists := ctx.Get("userID")
 	if !exists {
-		prob := errors.UnauthorizedError("User not authenticated", errors.GetInstance(ctx))
-		errors.RespondWithProblem(ctx, prob)
+		prob := problemErrors.UnauthorizedError("User not authenticated", problemErrors.GetInstance(ctx))
+		problemErrors.RespondWithProblem(ctx, prob)
+		return
+	}
+
+	// Get organization ID from header
+	organizationUUID, err := c.getOrganizationIDFromHeader(ctx)
+	if err != nil {
+		prob := problemErrors.ValidationError(err.Error(), problemErrors.GetInstance(ctx))
+		problemErrors.RespondWithProblem(ctx, prob)
 		return
 	}
 
@@ -141,21 +186,21 @@ func (c *NotificationPreferenceController) UpdateSinglePreference(ctx *gin.Conte
 	// Parse request body
 	var req models.NotificationPreferenceUpdateRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		prob := errors.BadRequestError("Invalid JSON format: "+err.Error(), errors.GetInstance(ctx))
-		errors.RespondWithProblem(ctx, prob)
+		prob := problemErrors.BadRequestError("Invalid JSON format: "+err.Error(), problemErrors.GetInstance(ctx))
+		problemErrors.RespondWithProblem(ctx, prob)
 		return
 	}
 
 	// Update single preference
-	preference, err := c.preferenceService.UpdateSinglePreference(userID.(uuid.UUID), event, &req)
+	preference, err := c.preferenceService.UpdateSinglePreference(organizationUUID, event, &req)
 	if err != nil {
-		if err.Error() == "user not found" {
-			prob := errors.NotFoundError("User not found", errors.GetInstance(ctx))
-			errors.RespondWithProblem(ctx, prob)
+		if err.Error() == "organization not found" {
+			prob := problemErrors.NotFoundError("Organization not found", problemErrors.GetInstance(ctx))
+			problemErrors.RespondWithProblem(ctx, prob)
 			return
 		}
-		prob := errors.BadRequestError(err.Error(), errors.GetInstance(ctx))
-		errors.RespondWithProblem(ctx, prob)
+		prob := problemErrors.BadRequestError(err.Error(), problemErrors.GetInstance(ctx))
+		problemErrors.RespondWithProblem(ctx, prob)
 		return
 	}
 
@@ -165,36 +210,46 @@ func (c *NotificationPreferenceController) UpdateSinglePreference(ctx *gin.Conte
 	})
 }
 
-// ResetToDefaults resets user preferences to default values
+// ResetToDefaults resets organization preferences to default values
 // @Summary Reset preferences to defaults
-// @Description Reset all notification preferences for the authenticated user to default values
+// @Description Reset all notification preferences for an organization to default values
 // @Tags notification-preferences
 // @Accept json
 // @Produce json
+// @Param Organization-ID header string true "Organization ID"
 // @Security BearerAuth
 // @Success 200 {object} map[string]interface{} "Success response with default preferences"
 // @Failure 401 {object} map[string]interface{} "Unauthorized"
+// @Failure 404 {object} map[string]interface{} "Organization not found"
 // @Failure 500 {object} map[string]interface{} "Internal server error"
-// @Router /notification-preferences/reset [post]
+// @Router /organizations/notification-preferences/reset [post]
 func (c *NotificationPreferenceController) ResetToDefaults(ctx *gin.Context) {
-	// Get user ID from JWT middleware
-	userID, exists := ctx.Get("userID")
+	// Get user ID from JWT middleware (for authentication)
+	_, exists := ctx.Get("userID")
 	if !exists {
-		prob := errors.UnauthorizedError("User not authenticated", errors.GetInstance(ctx))
-		errors.RespondWithProblem(ctx, prob)
+		prob := problemErrors.UnauthorizedError("User not authenticated", problemErrors.GetInstance(ctx))
+		problemErrors.RespondWithProblem(ctx, prob)
+		return
+	}
+
+	// Get organization ID from header
+	organizationUUID, err := c.getOrganizationIDFromHeader(ctx)
+	if err != nil {
+		prob := problemErrors.ValidationError(err.Error(), problemErrors.GetInstance(ctx))
+		problemErrors.RespondWithProblem(ctx, prob)
 		return
 	}
 
 	// Reset to defaults
-	preferences, err := c.preferenceService.ResetToDefaults(userID.(uuid.UUID))
+	preferences, err := c.preferenceService.ResetToDefaults(organizationUUID)
 	if err != nil {
-		if err.Error() == "user not found" {
-			prob := errors.NotFoundError("User not found", errors.GetInstance(ctx))
-			errors.RespondWithProblem(ctx, prob)
+		if err.Error() == "organization not found" {
+			prob := problemErrors.NotFoundError("Organization not found", problemErrors.GetInstance(ctx))
+			problemErrors.RespondWithProblem(ctx, prob)
 			return
 		}
-		prob := errors.InternalError(errors.GetInstance(ctx))
-		errors.RespondWithProblem(ctx, prob)
+		prob := problemErrors.InternalError(problemErrors.GetInstance(ctx))
+		problemErrors.RespondWithProblem(ctx, prob)
 		return
 	}
 
@@ -218,8 +273,8 @@ func (c *NotificationPreferenceController) GetAvailableEvents(ctx *gin.Context) 
 	// Get user ID from JWT middleware (for authentication only)
 	_, exists := ctx.Get("userID")
 	if !exists {
-		prob := errors.UnauthorizedError("User not authenticated", errors.GetInstance(ctx))
-		errors.RespondWithProblem(ctx, prob)
+		prob := problemErrors.UnauthorizedError("User not authenticated", problemErrors.GetInstance(ctx))
+		problemErrors.RespondWithProblem(ctx, prob)
 		return
 	}
 
@@ -248,25 +303,24 @@ func (c *NotificationPreferenceController) GenerateTestNotification(ctx *gin.Con
 	// Get user ID from JWT middleware
 	userID, exists := ctx.Get("userID")
 	if !exists {
-		prob := errors.UnauthorizedError("User not authenticated", errors.GetInstance(ctx))
-		errors.RespondWithProblem(ctx, prob)
+		prob := problemErrors.UnauthorizedError("User not authenticated", problemErrors.GetInstance(ctx))
+		problemErrors.RespondWithProblem(ctx, prob)
 		return
 	}
 
-	// Get organization ID from path parameter
-	orgID := ctx.Param("id")
-	organizationUUID, err := uuid.Parse(orgID)
+	// Get organization ID from header
+	organizationUUID, err := c.getOrganizationIDFromHeader(ctx)
 	if err != nil {
-		prob := errors.ValidationError("Invalid organization ID", errors.GetInstance(ctx))
-		errors.RespondWithProblem(ctx, prob)
+		prob := problemErrors.ValidationError(err.Error(), problemErrors.GetInstance(ctx))
+		problemErrors.RespondWithProblem(ctx, prob)
 		return
 	}
 
 	// Parse request body
 	var req models.TestNotificationRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		prob := errors.BadRequestError("Invalid JSON format: "+err.Error(), errors.GetInstance(ctx))
-		errors.RespondWithProblem(ctx, prob)
+		prob := problemErrors.BadRequestError("Invalid JSON format: "+err.Error(), problemErrors.GetInstance(ctx))
+		problemErrors.RespondWithProblem(ctx, prob)
 		return
 	}
 
@@ -277,12 +331,12 @@ func (c *NotificationPreferenceController) GenerateTestNotification(ctx *gin.Con
 	notification, err := c.preferenceService.GenerateTestNotification(userID.(uuid.UUID), &req)
 	if err != nil {
 		if err.Error() == "user not found" {
-			prob := errors.NotFoundError("User not found", errors.GetInstance(ctx))
-			errors.RespondWithProblem(ctx, prob)
+			prob := problemErrors.NotFoundError("User not found", problemErrors.GetInstance(ctx))
+			problemErrors.RespondWithProblem(ctx, prob)
 			return
 		}
-		prob := errors.InternalError(errors.GetInstance(ctx))
-		errors.RespondWithProblem(ctx, prob)
+		prob := problemErrors.InternalError(problemErrors.GetInstance(ctx))
+		problemErrors.RespondWithProblem(ctx, prob)
 		return
 	}
 
