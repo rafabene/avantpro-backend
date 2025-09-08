@@ -157,7 +157,6 @@ func (c *AuthController) Register(ctx *gin.Context) {
 // @Param email body controllers.PasswordResetRequest true "Email para redefinição de senha"
 // @Success 200 {object} controllers.MessageResponse "Email de redefinição enviado com sucesso"
 // @Failure 400 {object} errors.BadRequestProblem "Requisição inválida"
-// @Failure 404 {object} errors.NotFoundProblem "Não encontrado"
 // @Failure 500 {object} errors.InternalServerProblem "Erro interno do servidor"
 // @Router /auth/password-reset [post]
 func (c *AuthController) RequestPasswordReset(ctx *gin.Context) {
@@ -171,11 +170,6 @@ func (c *AuthController) RequestPasswordReset(ctx *gin.Context) {
 
 	err := c.authService.RequestPasswordReset(req.Email)
 	if err != nil {
-		if err.Error() == problemErrors.ErrUserNotFound {
-			prob := problemErrors.NotFoundError("Usuário não encontrado", problemErrors.GetInstance(ctx))
-			problemErrors.RespondWithProblem(ctx, prob)
-			return
-		}
 		prob := problemErrors.InternalError(problemErrors.GetInstance(ctx))
 		problemErrors.RespondWithProblem(ctx, prob)
 		return

@@ -633,7 +633,7 @@ var _ = Describe("Testes de Integração do AuthService", func() {
 					// Agora a validação está no service, então senhas fracas devem falhar
 					// Não precisamos de mocks para usuário que não existe ou create
 					// porque a validação vai falhar antes
-					
+
 					response, err := authService.Register(registerRequest)
 
 					// Senha fraca DEVE resultar em erro de validação

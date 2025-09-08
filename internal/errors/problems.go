@@ -107,7 +107,6 @@ const (
 // Mensagens de erro comuns
 const (
 	ErrUsernameAlreadyExists = "nome de usuário já existe"
-	ErrUserNotFound          = "usuário não encontrado"
 )
 
 // ValidationError creates a validation error problem

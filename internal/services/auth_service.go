@@ -240,7 +240,10 @@ func (s *authService) Register(req *RegisterRequest) (*LoginResponse, error) {
 func (s *authService) RequestPasswordReset(email string) error {
 	user, err := s.userRepo.GetByUsername(email)
 	if err != nil {
-		return errors.New("usuário não encontrado")
+		// Por motivos de segurança, sempre retorna sucesso mesmo quando o usuário não existe
+		// Isso previne ataques de enumeração de usuários
+		log.Printf("Tentativa de reset de senha para email inexistente: %s", email)
+		return nil
 	}
 
 	// Delete any existing tokens for this user
@@ -288,7 +291,7 @@ func (s *authService) ResetPassword(token, newPassword string) error {
 	}{
 		NewPassword: newPassword,
 	}
-	
+
 	if err := s.validator.Struct(&resetReq); err != nil {
 		return fmt.Errorf("senha inválida: %w", err)
 	}
