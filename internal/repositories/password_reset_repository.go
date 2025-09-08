@@ -1,5 +1,7 @@
 package repositories
 
+//go:generate mockgen -source=password_reset_repository.go -destination=../services/tests/mocks/password_reset_repository_mock.go -package=mocks
+
 import (
 	"time"
 

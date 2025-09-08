@@ -23,16 +23,16 @@ type OrganizationServiceInterface interface {
 	//   - req: Organization creation request containing name and description
 	//   - creatorID: UUID of the user creating the organization
 	// Returns:
-	//   - *models.Organization: The created organization with all related data
+	//   - *Organization: The created organization with all related data
 	//   - error: Error if creation fails or creator doesn't exist
-	CreateOrganization(req *models.OrganizationCreateRequest, creatorID uuid.UUID) (*models.Organization, error)
+	CreateOrganization(req *OrganizationCreateRequest, creatorID uuid.UUID) (*models.Organization, error)
 
 	// GetOrganization retrieves an organization by its ID.
 	// This method loads the organization with all related data (creator, members, invites).
 	// Parameters:
 	//   - id: UUID of the organization to retrieve
 	// Returns:
-	//   - *models.Organization: The organization with related data
+	//   - *Organization: The organization with related data
 	//   - error: Error if organization not found or database error
 	GetOrganization(id uuid.UUID) (*models.Organization, error)
 
@@ -57,9 +57,9 @@ type OrganizationServiceInterface interface {
 	//   - req: Update request containing new name and/or description
 	//   - userID: UUID of the user requesting the update (must be admin)
 	// Returns:
-	//   - *models.Organization: The updated organization
+	//   - *Organization: The updated organization
 	//   - error: Error if user lacks permissions or update fails
-	UpdateOrganization(id uuid.UUID, req *models.OrganizationUpdateRequest, userID uuid.UUID) (*models.Organization, error)
+	UpdateOrganization(id uuid.UUID, req *OrganizationUpdateRequest, userID uuid.UUID) (*models.Organization, error)
 
 	// DeleteOrganization soft-deletes an organization.
 	// Only the original creator can delete an organization.
@@ -100,7 +100,7 @@ type OrganizationServiceInterface interface {
 	// Returns:
 	//   - *models.OrganizationMember: The updated member with new role
 	//   - error: Error if user lacks permissions or update fails
-	UpdateMemberRole(orgID uuid.UUID, memberUserID uuid.UUID, req *models.OrganizationMemberUpdateRequest, requestorID uuid.UUID) (*models.OrganizationMember, error)
+	UpdateMemberRole(orgID uuid.UUID, memberUserID uuid.UUID, req *OrganizationMemberUpdateRequest, requestorID uuid.UUID) (*models.OrganizationMember, error)
 
 	// RemoveMember removes a member from an organization.
 	// Admin members can remove any other member (except the creator).
@@ -142,7 +142,7 @@ type OrganizationServiceInterface interface {
 	// Returns:
 	//   - *models.OrganizationInvite: The created invitation with token and expiry
 	//   - error: Error if user lacks permissions, already invited, or email sending fails
-	InviteUser(orgID uuid.UUID, req *models.OrganizationInviteRequest, inviterID uuid.UUID) (*models.OrganizationInvite, error)
+	InviteUser(orgID uuid.UUID, req *OrganizationInviteRequest, inviterID uuid.UUID) (*models.OrganizationInvite, error)
 
 	// GetOrganizationInvites retrieves all pending invitations for an organization.
 	// Only admin members can view the organization's invitations.
@@ -199,6 +199,19 @@ type OrganizationServiceInterface interface {
 	//   - *models.OrganizationInvite: The updated invitation with new token and expiry
 	//   - error: Error if user lacks permissions or resend fails
 	ResendInvite(inviteID uuid.UUID, userID uuid.UUID) (*models.OrganizationInvite, error)
+
+	// Security and Validation
+
+	// IsUserMemberOfOrganization checks if a user is a member of the specified organization.
+	// This method is used for security validation to ensure users can only access
+	// organizations they belong to.
+	// Parameters:
+	//   - userID: UUID of the user to check
+	//   - orgID: UUID of the organization to check membership
+	// Returns:
+	//   - bool: true if user is a member, false otherwise
+	//   - error: Error if organization not found or database error
+	IsUserMemberOfOrganization(userID uuid.UUID, orgID uuid.UUID) (bool, error)
 }
 
 // OrganizationService implements the organization service interface.
@@ -238,7 +251,7 @@ func NewOrganizationService(orgRepo repositories.OrganizationRepositoryInterface
 // Organization CRUD Methods
 
 // CreateOrganization creates a new organization with the creator as admin
-func (s *OrganizationService) CreateOrganization(req *models.OrganizationCreateRequest, creatorID uuid.UUID) (*models.Organization, error) {
+func (s *OrganizationService) CreateOrganization(req *OrganizationCreateRequest, creatorID uuid.UUID) (*models.Organization, error) {
 	// Validate creator exists
 	creator, err := s.userRepo.GetByID(creatorID)
 	if err != nil {
@@ -287,7 +300,7 @@ func (s *OrganizationService) GetUserOrganizations(userID uuid.UUID, limit, offs
 }
 
 // UpdateOrganization updates an organization (only admin can update)
-func (s *OrganizationService) UpdateOrganization(id uuid.UUID, req *models.OrganizationUpdateRequest, userID uuid.UUID) (*models.Organization, error) {
+func (s *OrganizationService) UpdateOrganization(id uuid.UUID, req *OrganizationUpdateRequest, userID uuid.UUID) (*models.Organization, error) {
 	// Get organization
 	org, err := s.orgRepo.GetByID(id)
 	if err != nil {
@@ -353,7 +366,7 @@ func (s *OrganizationService) GetOrganizationMembers(orgID uuid.UUID, userID uui
 }
 
 // UpdateMemberRole updates a member's role (only admin can update)
-func (s *OrganizationService) UpdateMemberRole(orgID uuid.UUID, memberUserID uuid.UUID, req *models.OrganizationMemberUpdateRequest, requestorID uuid.UUID) (*models.OrganizationMember, error) {
+func (s *OrganizationService) UpdateMemberRole(orgID uuid.UUID, memberUserID uuid.UUID, req *OrganizationMemberUpdateRequest, requestorID uuid.UUID) (*models.OrganizationMember, error) {
 	// Get organization
 	org, err := s.orgRepo.GetByID(orgID)
 	if err != nil {
@@ -378,12 +391,12 @@ func (s *OrganizationService) UpdateMemberRole(orgID uuid.UUID, memberUserID uui
 	}
 
 	// Prevent removing admin role from creator
-	if member.UserID == org.CreatedBy && req.Role != models.OrganizationRoleAdmin {
+	if member.UserID == org.CreatedBy && models.OrganizationRole(req.Role) != models.OrganizationRoleAdmin {
 		return nil, fmt.Errorf("cannot change role of organization creator")
 	}
 
 	// Update role
-	member.Role = req.Role
+	member.Role = models.OrganizationRole(req.Role)
 	if err := s.orgRepo.UpdateMember(member); err != nil {
 		return nil, fmt.Errorf("failed to update member role: %w", err)
 	}
@@ -432,7 +445,7 @@ func (s *OrganizationService) GetUserMemberships(userID uuid.UUID, limit, offset
 // Organization Invites Methods
 
 // InviteUser sends an invitation to join an organization (only admin can invite)
-func (s *OrganizationService) InviteUser(orgID uuid.UUID, req *models.OrganizationInviteRequest, inviterID uuid.UUID) (*models.OrganizationInvite, error) {
+func (s *OrganizationService) InviteUser(orgID uuid.UUID, req *OrganizationInviteRequest, inviterID uuid.UUID) (*models.OrganizationInvite, error) {
 	// Get organization
 	org, err := s.orgRepo.GetByID(orgID)
 	if err != nil {
@@ -475,7 +488,7 @@ func (s *OrganizationService) InviteUser(orgID uuid.UUID, req *models.Organizati
 	invite := &models.OrganizationInvite{
 		OrganizationID: orgID,
 		Email:          req.Email,
-		Role:           req.Role,
+		Role:           models.OrganizationRole(req.Role),
 		InvitedBy:      inviterID,
 		Status:         models.InviteStatusPending,
 	}
@@ -756,4 +769,50 @@ func (s *OrganizationService) isUserAdmin(org *models.Organization, userID uuid.
 
 	// Return true only if member has admin role
 	return member.Role == models.OrganizationRoleAdmin
+}
+
+// IsUserMemberOfOrganization checks if a user is a member of the specified organization.
+// This method is used for security validation to ensure users can only access
+// organizations they belong to.
+//
+// Security Rules:
+//   - Only returns true if user is an active member (admin or user role)
+//   - Organization creators are always considered members
+//   - Soft-deleted organizations return "organization not found" error
+//   - Returns false for non-members without error
+//
+// Parameters:
+//   - userID: UUID of the user to check
+//   - orgID: UUID of the organization to check membership
+//
+// Returns:
+//   - bool: true if user is a member, false otherwise
+//   - error: Error if organization not found or database error
+func (s *OrganizationService) IsUserMemberOfOrganization(userID uuid.UUID, orgID uuid.UUID) (bool, error) {
+	// First, check if organization exists
+	org, err := s.orgRepo.GetByID(orgID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return false, errors.New("organization not found")
+		}
+		return false, fmt.Errorf("failed to fetch organization: %w", err)
+	}
+
+	// Organization creator is always a member
+	if org.CreatedBy == userID {
+		return true, nil
+	}
+
+	// Check membership in organization_members table
+	member, err := s.orgRepo.GetMember(orgID, userID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			// User is not a member, but this is not an error
+			return false, nil
+		}
+		return false, fmt.Errorf("failed to check membership: %w", err)
+	}
+
+	// User is a member if record exists (regardless of role)
+	return member != nil, nil
 }

@@ -20,18 +20,17 @@ import (
 	"github.com/rafabene/avantpro-backend/internal/middleware"
 	"github.com/rafabene/avantpro-backend/internal/repositories"
 	"github.com/rafabene/avantpro-backend/internal/services"
-	"github.com/rafabene/avantpro-backend/internal/websocket"
 	"github.com/rafabene/avantpro-backend/internal/worker"
 )
 
 // @title AvantPro Backend API
 // @version 1.0
-// @description User Management API with Profile support
+// @description APIs do Avant Pro
 // @termsOfService http://swagger.io/terms/
 
-// @contact.name API Support
+// @contact.name Suporte da API
 // @contact.url http://www.swagger.io/support
-// @contact.email support@swagger.io
+// @contact.email rafabene@gmail.com
 
 // @license.name MIT
 // @license.url https://opensource.org/licenses/MIT
@@ -42,84 +41,80 @@ import (
 // @securityDefinitions.apikey BearerAuth
 // @in header
 // @name Authorization
-// @description Type "Bearer" followed by a space and JWT token.
+// @description Digite "Bearer" seguido de um espaço e o token JWT.
 
 func main() {
-	// Load environment variables in development
+	// Carregar variáveis de ambiente em desenvolvimento
 	if err := godotenv.Load(); err != nil {
-		log.Println("No .env file found, using environment variables")
+		log.Println("Nenhum arquivo .env encontrado, usando variáveis de ambiente")
 	}
 
-	// Load configuration
+	// Carregar configuração
 	cfg := config.LoadConfig()
 
-	// Set Gin mode
+	// Definir modo do Gin
 	gin.SetMode(cfg.Server.GinMode)
 
-	// Connect to database
+	// Conectar ao banco de dados
 	db, err := database.Connect(cfg)
 	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
+		log.Fatalf("Falha ao conectar ao banco de dados: %v", err)
 	}
 
-	// Initialize repositories
+	// Inicializar repositórios
 	userRepo := repositories.NewUserRepository(db)
 	orgRepo := repositories.NewOrganizationRepository(db)
 	notificationRepo := repositories.NewNotificationRepository(db)
 	notificationPrefRepo := repositories.NewNotificationPreferenceRepository(db)
 	passwordResetRepo := repositories.NewPasswordResetRepository(db)
 
-	// Initialize WebSocket hub
-	wsHub := websocket.NewHub()
-	go wsHub.Run()
-
-	// Initialize services
+	// Inicializar serviços
 	emailService := services.NewEmailService()
-	notificationService := services.NewNotificationService(notificationRepo, orgRepo, userRepo, wsHub)
+	notificationService := services.NewNotificationService(notificationRepo, orgRepo, userRepo, nil)
 	notificationPrefService := services.NewNotificationPreferenceService(notificationPrefRepo, notificationRepo, orgRepo, notificationService)
 	orgService := services.NewOrganizationService(orgRepo, userRepo, emailService, notificationService, notificationPrefRepo)
 
-	// Initialize controllers
+	// Inicializar controladores
 	orgController := controllers.NewOrganizationController(orgService)
-	authService := services.NewAuthService(userRepo, passwordResetRepo, cfg.JWT.Secret)
+	authService := services.NewAuthService(userRepo, passwordResetRepo, cfg.JWT.Secret, &cfg.Auth, &cfg.JWT)
 	authController := controllers.NewAuthController(authService)
 	notificationController := controllers.NewNotificationController(notificationService)
 	notificationPrefController := controllers.NewNotificationPreferenceController(notificationPrefService)
 
-	// Initialize and start worker for periodic maintenance tasks
+	// Inicializar e iniciar worker para tarefas de manutenção periódica
 	maintenanceWorker := worker.NewWorker(orgRepo)
 	maintenanceWorker.Start()
 
-	// Setup graceful shutdown for worker
+	// Configurar desligamento gracioso para o worker
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		<-sigChan
-		log.Println("Received shutdown signal")
+		log.Println("Sinal de desligamento recebido")
 		maintenanceWorker.Stop()
 		os.Exit(0)
 	}()
 
-	// Setup router
+	// Configurar roteador
 	router := gin.New()
 
 	// Middleware
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
 
-	// CORS middleware
+	// Middleware CORS
 	config := cors.DefaultConfig()
 	config.AllowOrigins = []string{"http://localhost:4200", "http://localhost:4201"}
 	config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
 	config.AllowHeaders = []string{"Origin", "Content-Type", "Accept", "Authorization", "User-ID"}
 	router.Use(cors.New(config))
 
-	// Configure trusted proxies
+	// Configurar proxies confiáveis
 	if err := router.SetTrustedProxies(cfg.Server.TrustedProxies); err != nil {
-		log.Printf("Warning: Failed to set trusted proxies: %v", err)
+		log.Printf("Aviso: Falha ao definir proxies confiáveis: %v", err)
 	}
 
-	// Health check endpoint
+	// Endpoint de verificação de saúde
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"status":  "healthy",
@@ -128,15 +123,15 @@ func main() {
 		})
 	})
 
-	// Swagger documentation (only in development)
+	// Documentação Swagger (apenas em desenvolvimento)
 	if cfg.IsDevelopment() {
 		router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	}
 
-	// API routes
+	// Rotas da API
 	v1 := router.Group("/api/v1")
 	{
-		// Authentication routes
+		// Rotas de autenticação
 		auth := v1.Group("/auth")
 		{
 			auth.POST("/login", authController.Login)
@@ -144,7 +139,7 @@ func main() {
 			auth.POST("/password-reset", authController.RequestPasswordReset)
 			auth.POST("/password-reset/confirm", authController.ResetPassword)
 
-			// Protected auth routes
+			// Rotas de autenticação protegidas
 			authProtected := auth.Group("")
 			authProtected.Use(middleware.AuthMiddleware(cfg.JWT.Secret))
 			{
@@ -152,73 +147,102 @@ func main() {
 			}
 		}
 
-		// Public organization routes (no authentication required)
-		publicOrganizations := v1.Group("/organizations")
+		// Rotas públicas (sem autenticação necessária)
+		public := v1.Group("")
 		{
-			// Invite Validation (public)
-			publicOrganizations.GET("/invites/token/:token/validate", orgController.ValidateInvite)
+			// Validação de convite (público)
+			public.GET("/invites/token/:token/validate", orgController.ValidateInvite)
 		}
 
-		// Organization routes (protected)
-		organizations := v1.Group("/organizations")
-		organizations.Use(middleware.AuthMiddleware(cfg.JWT.Secret))
+		// Rotas protegidas
+		protected := v1.Group("")
+		protected.Use(middleware.AuthMiddleware(cfg.JWT.Secret))
 		{
-			// Organization CRUD
-			organizations.POST("", orgController.CreateOrganization)
-			organizations.GET("/my", orgController.GetUserOrganizations)
-			organizations.GET("/memberships", orgController.GetUserMemberships)
-			organizations.GET("", orgController.GetOrganization)       // Uses Organization-ID header
-			organizations.PUT("", orgController.UpdateOrganization)    // Uses Organization-ID header
-			organizations.DELETE("", orgController.DeleteOrganization) // Uses Organization-ID header
-
-			// Organization Members
-			organizations.GET("/members", orgController.GetOrganizationMembers)   // Uses Organization-ID header
-			organizations.PUT("/members/:userId", orgController.UpdateMemberRole) // Uses Organization-ID header
-			organizations.DELETE("/members/:userId", orgController.RemoveMember)  // Uses Organization-ID header
-
-			// Organization Invites
-			organizations.POST("/invites", orgController.InviteUser)            // Uses Organization-ID header
-			organizations.GET("/invites", orgController.GetOrganizationInvites) // Uses Organization-ID header
-
-			// Invite Management (by ID)
-			organizations.POST("/invites/id/:inviteId/resend", orgController.ResendInvite)
-			organizations.DELETE("/invites/id/:inviteId", orgController.RevokeInvite)
-
-			// Invite Acceptance (by token)
-			organizations.POST("/invites/token/:token/accept", orgController.AcceptInvite)
-
-			// Organization-scoped Notification routes
-			orgNotifications := organizations.Group("/notifications")
+			// Rotas de organização que não requerem validação de associação
+			organizations := protected.Group("/organizations")
 			{
-				orgNotifications.GET("", notificationController.GetUserNotifications)           // Uses Organization-ID header
-				orgNotifications.GET("/unread", notificationController.GetUnreadNotifications)  // Uses Organization-ID header
-				orgNotifications.GET("/unread-count", notificationController.GetUnreadCount)    // Uses Organization-ID header
-				orgNotifications.PUT("/mark-all-read", notificationController.MarkAllAsRead)    // Uses Organization-ID header
-				orgNotifications.PUT("/:notifId/read", notificationController.MarkAsRead)       // Uses Organization-ID header
-				orgNotifications.DELETE("", notificationController.DeleteAllNotifications)      // Uses Organization-ID header
-				orgNotifications.DELETE("/:notifId", notificationController.DeleteNotification) // Uses Organization-ID header
+				// CRUD de organização
+				organizations.POST("", orgController.CreateOrganization)
+				organizations.GET("/my", orgController.GetUserOrganizations)
 			}
 
-			// Organization-scoped Notification preference routes
-			orgNotificationPrefs := organizations.Group("/notification-preferences")
+			// Rotas de organização que requerem validação de associação
+			organizationsWithMembership := protected.Group("/organizations")
+			organizationsWithMembership.Use(middleware.OrganizationMembershipMiddleware(orgService))
 			{
-				orgNotificationPrefs.GET("", notificationPrefController.GetOrganizationPreferences)     // Uses Organization-ID header
-				orgNotificationPrefs.PUT("", notificationPrefController.UpdateOrganizationPreferences)  // Uses Organization-ID header
-				orgNotificationPrefs.PUT("/:event", notificationPrefController.UpdateSinglePreference)  // Uses Organization-ID header
-				orgNotificationPrefs.POST("/reset", notificationPrefController.ResetToDefaults)         // Uses Organization-ID header
-				orgNotificationPrefs.GET("/events", notificationPrefController.GetAvailableEvents)      // Uses Organization-ID header
-				orgNotificationPrefs.POST("/test", notificationPrefController.GenerateTestNotification) // Uses Organization-ID header
+				organizationsWithMembership.GET("", orgController.GetOrganization)       // Usa header Organization-ID
+				organizationsWithMembership.PUT("", orgController.UpdateOrganization)    // Usa header Organization-ID
+				organizationsWithMembership.DELETE("", orgController.DeleteOrganization) // Usa header Organization-ID
+			}
+
+			// Rotas centralizadas de Membros (requerem validação de associação)
+			members := protected.Group("/members")
+			members.Use(middleware.OrganizationMembershipMiddleware(orgService))
+			{
+				members.GET("", orgController.GetOrganizationMembers)   // Usa header Organization-ID
+				members.PUT("/:userId", orgController.UpdateMemberRole) // Usa header Organization-ID
+				members.DELETE("/:userId", orgController.RemoveMember)  // Usa header Organization-ID
+			}
+
+			// Rotas centralizadas de Associações (não requerem Organization-ID)
+			memberships := protected.Group("/memberships")
+			{
+				memberships.GET("", orgController.GetUserMemberships)
+			}
+
+			// Rotas centralizadas de Convites
+			invites := protected.Group("/invites")
+			{
+				// Rotas que requerem validação de associação
+				invitesWithMembership := invites.Group("")
+				invitesWithMembership.Use(middleware.OrganizationMembershipMiddleware(orgService))
+				{
+					invitesWithMembership.POST("", orgController.InviteUser)            // Usa header Organization-ID
+					invitesWithMembership.GET("", orgController.GetOrganizationInvites) // Usa header Organization-ID
+				}
+
+				// Rotas que não requerem header Organization-ID
+				invites.POST("/:inviteId/resend", orgController.ResendInvite)
+				invites.DELETE("/:inviteId", orgController.RevokeInvite)
+
+				// Operações baseadas em token
+				invites.POST("/token/:token/accept", orgController.AcceptInvite)
+			}
+
+			// Rotas centralizadas de Notificações (requerem validação de associação)
+			notifications := protected.Group("/notifications")
+			notifications.Use(middleware.OrganizationMembershipMiddleware(orgService))
+			{
+				notifications.GET("", notificationController.GetUserNotifications)           // Usa header Organization-ID
+				notifications.GET("/unread", notificationController.GetUnreadNotifications)  // Usa header Organization-ID
+				notifications.GET("/unread-count", notificationController.GetUnreadCount)    // Usa header Organization-ID
+				notifications.PUT("/mark-all-read", notificationController.MarkAllAsRead)    // Usa header Organization-ID
+				notifications.PUT("/:notifId/read", notificationController.MarkAsRead)       // Usa header Organization-ID
+				notifications.DELETE("", notificationController.DeleteAllNotifications)      // Usa header Organization-ID
+				notifications.DELETE("/:notifId", notificationController.DeleteNotification) // Usa header Organization-ID
+			}
+
+			// Rotas centralizadas de Preferências de Notificação (requerem validação de associação)
+			notificationPrefs := protected.Group("/notification-preferences")
+			notificationPrefs.Use(middleware.OrganizationMembershipMiddleware(orgService))
+			{
+				notificationPrefs.GET("", notificationPrefController.GetOrganizationPreferences)     // Usa header Organization-ID
+				notificationPrefs.PUT("", notificationPrefController.UpdateOrganizationPreferences)  // Usa header Organization-ID
+				notificationPrefs.PUT("/:event", notificationPrefController.UpdateSinglePreference)  // Usa header Organization-ID
+				notificationPrefs.POST("/reset", notificationPrefController.ResetToDefaults)         // Usa header Organization-ID
+				notificationPrefs.GET("/events", notificationPrefController.GetAvailableEvents)      // Header Organization-ID não requerido
+				notificationPrefs.POST("/test", notificationPrefController.GenerateTestNotification) // Usa header Organization-ID
 			}
 		}
 	}
 
-	// Start server
-	log.Printf("Starting server on port %s in %s mode", cfg.Server.Port, cfg.Environment)
+	// Iniciar servidor
+	log.Printf("Iniciando servidor na porta %s em modo %s", cfg.Server.Port, cfg.Environment)
 	if cfg.IsDevelopment() {
-		log.Printf("Swagger UI available at: http://localhost:%s/swagger/index.html", cfg.Server.Port)
+		log.Printf("Interface Swagger disponível em: http://localhost:%s/swagger/index.html", cfg.Server.Port)
 	}
 
 	if err := router.Run(":" + cfg.Server.Port); err != nil {
-		log.Fatalf("Failed to start server: %v", err)
+		log.Fatalf("Falha ao iniciar servidor: %v", err)
 	}
 }

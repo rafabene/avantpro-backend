@@ -19,9 +19,9 @@ type NotificationPreferenceService interface {
 	// Parameters:
 	//   - organizationID: ID of the organization to get preferences for
 	// Returns:
-	//   - []models.NotificationPreferenceResponse: List of organization preferences
+	//   - []NotificationPreferenceResponse: List of organization preferences
 	//   - error: Error if retrieval or creation fails
-	GetOrganizationPreferences(organizationID uuid.UUID) ([]models.NotificationPreferenceResponse, error)
+	GetOrganizationPreferences(organizationID uuid.UUID) ([]NotificationPreferenceResponse, error)
 
 	// UpdateOrganizationPreferences updates notification preferences for an organization using bulk update.
 	// This method allows updating multiple preferences at once.
@@ -29,9 +29,9 @@ type NotificationPreferenceService interface {
 	//   - organizationID: ID of the organization to update preferences for
 	//   - req: Bulk update request containing preference updates
 	// Returns:
-	//   - []models.NotificationPreferenceResponse: Updated preferences
+	//   - []NotificationPreferenceResponse: Updated preferences
 	//   - error: Error if validation fails or update fails
-	UpdateOrganizationPreferences(organizationID uuid.UUID, req *models.NotificationPreferenceBulkUpdateRequest) ([]models.NotificationPreferenceResponse, error)
+	UpdateOrganizationPreferences(organizationID uuid.UUID, req *NotificationPreferenceBulkUpdateRequest) ([]NotificationPreferenceResponse, error)
 
 	// UpdateSinglePreference updates a single notification preference.
 	// This method allows updating individual preference settings.
@@ -40,18 +40,18 @@ type NotificationPreferenceService interface {
 	//   - event: The notification event type to update
 	//   - req: Update request containing new preference values
 	// Returns:
-	//   - *models.NotificationPreferenceResponse: Updated preference
+	//   - *NotificationPreferenceResponse: Updated preference
 	//   - error: Error if preference not found or update fails
-	UpdateSinglePreference(organizationID uuid.UUID, event models.NotificationEvent, req *models.NotificationPreferenceUpdateRequest) (*models.NotificationPreferenceResponse, error)
+	UpdateSinglePreference(organizationID uuid.UUID, event NotificationEvent, req *NotificationPreferenceUpdateRequest) (*NotificationPreferenceResponse, error)
 
 	// ResetToDefaults resets all organization preferences to default values.
 	// This method deletes existing preferences and creates new default ones.
 	// Parameters:
 	//   - organizationID: ID of the organization to reset preferences for
 	// Returns:
-	//   - []models.NotificationPreferenceResponse: Default preferences
+	//   - []NotificationPreferenceResponse: Default preferences
 	//   - error: Error if reset fails
-	ResetToDefaults(organizationID uuid.UUID) ([]models.NotificationPreferenceResponse, error)
+	ResetToDefaults(organizationID uuid.UUID) ([]NotificationPreferenceResponse, error)
 
 	// IsEventEnabledForOrganization checks if a specific notification event is enabled for an organization.
 	// This method is used by the notification service to check if notifications should be sent.
@@ -61,13 +61,13 @@ type NotificationPreferenceService interface {
 	// Returns:
 	//   - bool: True if the event is enabled for the organization
 	//   - error: Error if check fails
-	IsEventEnabledForOrganization(organizationID uuid.UUID, event models.NotificationEvent) (bool, error)
+	IsEventEnabledForOrganization(organizationID uuid.UUID, event NotificationEvent) (bool, error)
 
 	// GetAvailableEvents returns all available notification events with descriptions.
 	// This method provides metadata about notification types for UI display.
 	// Returns:
-	//   - map[models.NotificationEvent]string: Event to description mapping
-	GetAvailableEvents() map[models.NotificationEvent]string
+	//   - map[NotificationEvent]string: Event to description mapping
+	GetAvailableEvents() map[NotificationEvent]string
 
 	// GenerateTestNotification creates a test notification for an organization.
 	// This method allows users to test their notification settings.
@@ -75,9 +75,9 @@ type NotificationPreferenceService interface {
 	//   - userID: ID of the user sending the test
 	//   - req: Test notification request containing title, message, and type
 	// Returns:
-	//   - *models.NotificationResponse: Created test notification
+	//   - *NotificationResponse: Created test notification
 	//   - error: Error if creation fails
-	GenerateTestNotification(userID uuid.UUID, req *models.TestNotificationRequest) (*models.NotificationResponse, error)
+	GenerateTestNotification(userID uuid.UUID, req *TestNotificationRequest) (*NotificationResponse, error)
 }
 
 // notificationPreferenceService implements the NotificationPreferenceService interface
@@ -104,7 +104,7 @@ func NewNotificationPreferenceService(
 }
 
 // GetOrganizationPreferences retrieves all notification preferences for an organization
-func (s *notificationPreferenceService) GetOrganizationPreferences(organizationID uuid.UUID) ([]models.NotificationPreferenceResponse, error) {
+func (s *notificationPreferenceService) GetOrganizationPreferences(organizationID uuid.UUID) ([]NotificationPreferenceResponse, error) {
 	// Validate organization exists
 	_, err := s.organizationRepo.GetByID(organizationID)
 	if err != nil {
@@ -134,11 +134,11 @@ func (s *notificationPreferenceService) GetOrganizationPreferences(organizationI
 	}
 
 	// Convert to response format
-	responses := make([]models.NotificationPreferenceResponse, len(preferences))
+	responses := make([]NotificationPreferenceResponse, len(preferences))
 	for i, pref := range preferences {
-		responses[i] = models.NotificationPreferenceResponse{
+		responses[i] = NotificationPreferenceResponse{
 			ID:        pref.ID,
-			Event:     pref.Event,
+			Event:     NotificationEvent(pref.Event),
 			Enabled:   pref.Enabled,
 			CreatedAt: pref.CreatedAt,
 			UpdatedAt: pref.UpdatedAt,
@@ -149,7 +149,7 @@ func (s *notificationPreferenceService) GetOrganizationPreferences(organizationI
 }
 
 // UpdateOrganizationPreferences updates notification preferences for an organization using bulk update
-func (s *notificationPreferenceService) UpdateOrganizationPreferences(organizationID uuid.UUID, req *models.NotificationPreferenceBulkUpdateRequest) ([]models.NotificationPreferenceResponse, error) {
+func (s *notificationPreferenceService) UpdateOrganizationPreferences(organizationID uuid.UUID, req *NotificationPreferenceBulkUpdateRequest) ([]NotificationPreferenceResponse, error) {
 	// Validate organization exists
 	_, err := s.organizationRepo.GetByID(organizationID)
 	if err != nil {
@@ -166,8 +166,17 @@ func (s *notificationPreferenceService) UpdateOrganizationPreferences(organizati
 		}
 	}
 
+	// Convert to models format for repository
+	repoPrefs := make([]models.NotificationPreferenceBulkItem, len(req.Preferences))
+	for i, pref := range req.Preferences {
+		repoPrefs[i] = models.NotificationPreferenceBulkItem{
+			Event:   models.NotificationEvent(pref.Event),
+			Enabled: pref.Enabled,
+		}
+	}
+
 	// Perform bulk update
-	if err := s.preferenceRepo.BulkUpdate(organizationID, req.Preferences); err != nil {
+	if err := s.preferenceRepo.BulkUpdate(organizationID, repoPrefs); err != nil {
 		return nil, fmt.Errorf("failed to update preferences: %w", err)
 	}
 
@@ -176,20 +185,20 @@ func (s *notificationPreferenceService) UpdateOrganizationPreferences(organizati
 }
 
 // UpdateSinglePreference updates a single notification preference
-func (s *notificationPreferenceService) UpdateSinglePreference(organizationID uuid.UUID, event models.NotificationEvent, req *models.NotificationPreferenceUpdateRequest) (*models.NotificationPreferenceResponse, error) {
+func (s *notificationPreferenceService) UpdateSinglePreference(organizationID uuid.UUID, event NotificationEvent, req *NotificationPreferenceUpdateRequest) (*NotificationPreferenceResponse, error) {
 	// Validate event
 	if !event.IsValid() {
 		return nil, fmt.Errorf("invalid notification event: %s", event)
 	}
 
 	// Get existing preference
-	preference, err := s.preferenceRepo.GetByOrganizationIDAndEvent(organizationID, event)
+	preference, err := s.preferenceRepo.GetByOrganizationIDAndEvent(organizationID, models.NotificationEvent(event))
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			// Create new preference if it doesn't exist
 			preference = &models.NotificationPreference{
 				OrganizationID: organizationID,
-				Event:          event,
+				Event:          models.NotificationEvent(event),
 				Enabled:        true, // Default enabled
 			}
 		} else {
@@ -208,9 +217,9 @@ func (s *notificationPreferenceService) UpdateSinglePreference(organizationID uu
 	}
 
 	// Convert to response
-	response := &models.NotificationPreferenceResponse{
+	response := &NotificationPreferenceResponse{
 		ID:        preference.ID,
-		Event:     preference.Event,
+		Event:     NotificationEvent(preference.Event),
 		Enabled:   preference.Enabled,
 		CreatedAt: preference.CreatedAt,
 		UpdatedAt: preference.UpdatedAt,
@@ -220,7 +229,7 @@ func (s *notificationPreferenceService) UpdateSinglePreference(organizationID uu
 }
 
 // ResetToDefaults resets all organization preferences to default values
-func (s *notificationPreferenceService) ResetToDefaults(organizationID uuid.UUID) ([]models.NotificationPreferenceResponse, error) {
+func (s *notificationPreferenceService) ResetToDefaults(organizationID uuid.UUID) ([]NotificationPreferenceResponse, error) {
 	// Validate organization exists
 	_, err := s.organizationRepo.GetByID(organizationID)
 	if err != nil {
@@ -245,23 +254,23 @@ func (s *notificationPreferenceService) ResetToDefaults(organizationID uuid.UUID
 }
 
 // IsEventEnabledForOrganization checks if a specific notification event is enabled for an organization
-func (s *notificationPreferenceService) IsEventEnabledForOrganization(organizationID uuid.UUID, event models.NotificationEvent) (bool, error) {
-	return s.preferenceRepo.IsEventEnabledForOrganization(organizationID, event)
+func (s *notificationPreferenceService) IsEventEnabledForOrganization(organizationID uuid.UUID, event NotificationEvent) (bool, error) {
+	return s.preferenceRepo.IsEventEnabledForOrganization(organizationID, models.NotificationEvent(event))
 }
 
 // GetAvailableEvents returns all available notification events with descriptions
-func (s *notificationPreferenceService) GetAvailableEvents() map[models.NotificationEvent]string {
-	events := []models.NotificationEvent{
-		models.NotificationEventMemberJoined,
-		models.NotificationEventMemberLeft,
-		models.NotificationEventMemberRoleChanged,
-		models.NotificationEventInvitationSent,
-		models.NotificationEventInvitationAccepted,
-		models.NotificationEventInvitationExpired,
-		models.NotificationEventOrganizationUpdate,
+func (s *notificationPreferenceService) GetAvailableEvents() map[NotificationEvent]string {
+	events := []NotificationEvent{
+		NotificationEventMemberJoined,
+		NotificationEventMemberLeft,
+		NotificationEventMemberRoleChanged,
+		NotificationEventInvitationSent,
+		NotificationEventInvitationAccepted,
+		NotificationEventInvitationExpired,
+		NotificationEventOrganizationUpdate,
 	}
 
-	result := make(map[models.NotificationEvent]string)
+	result := make(map[NotificationEvent]string)
 	for _, event := range events {
 		result[event] = event.GetDescription()
 	}
@@ -270,9 +279,9 @@ func (s *notificationPreferenceService) GetAvailableEvents() map[models.Notifica
 }
 
 // GenerateTestNotification creates a test notification for a user
-func (s *notificationPreferenceService) GenerateTestNotification(userID uuid.UUID, req *models.TestNotificationRequest) (*models.NotificationResponse, error) {
+func (s *notificationPreferenceService) GenerateTestNotification(userID uuid.UUID, req *TestNotificationRequest) (*NotificationResponse, error) {
 	// Create notification request
-	createReq := &models.CreateNotificationRequest{
+	createReq := &CreateNotificationRequest{
 		UserID:         userID,
 		OrganizationID: req.OrganizationID,
 		Title:          req.Title,
@@ -281,6 +290,6 @@ func (s *notificationPreferenceService) GenerateTestNotification(userID uuid.UUI
 		Data:           "{\"type\":\"test\",\"generated_by\":\"user\"}",
 	}
 
-	// Use NotificationService to create notification (which will handle WebSocket broadcast)
+	// Use NotificationService to create notification
 	return s.notificationService.CreateNotification(createReq)
 }

@@ -15,10 +15,10 @@ GOMOD=$(GOCMD) mod
 BINARY_NAME=$(APP_NAME)
 BINARY_UNIX=$(BINARY_NAME)_unix
 
-.PHONY: all build clean run deps tidy swagger help
+.PHONY: all build clean run deps tidy swagger test test-coverage generate db/populate-test db/clear db/status-tables db/run-sql help
 
 # Default target
-all: clean deps tidy swagger build
+all: clean deps tidy generate swagger test build
 
 # Build the application
 build:
@@ -80,6 +80,26 @@ lint:
 	@which golangci-lint > /dev/null || (echo "golangci-lint not installed. Run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest" && exit 1)
 	golangci-lint run
 
+# Run tests
+test: generate
+	@echo "Running tests..."
+	@which ginkgo > /dev/null || (echo "ginkgo CLI not installed. Run: make install-tools" && exit 1)
+	ginkgo -v -r ./internal/
+
+# Run integration tests with testcontainers
+test-integration:
+	@echo "Running integration tests with testcontainers..."
+	@which ginkgo > /dev/null || (echo "ginkgo CLI not installed. Run: make install-tools" && exit 1)
+	TESTCONTAINERS_RYUK_DISABLED=true ginkgo -v -r ./internal/
+
+# Run tests with coverage
+test-coverage:
+	@echo "Running tests with coverage..."
+	$(GOTEST) -v -coverprofile=coverage.out ./...
+	$(GOCMD) tool cover -html=coverage.out -o coverage.html
+	@echo "Coverage report generated: coverage.html"
+
+
 # Run the application
 run:
 	@echo "Running $(APP_NAME)..."
@@ -90,6 +110,14 @@ dev: swagger
 	@echo "Starting development server with hot reload..."
 	@which air > /dev/null || (echo "air not installed. Run: make install-tools" && exit 1)
 	air
+
+# Generate mocks
+generate:
+	@echo "Generating mocks..."
+	@which mockgen > /dev/null || (echo "mockgen not installed. Run: make install-tools" && exit 1)
+	@mkdir -p internal/services/tests/mocks
+	$(GOCMD) generate ./internal/repositories/...
+	@echo "Mocks generated successfully!"
 
 # Install development tools
 install-tools:
@@ -102,6 +130,10 @@ install-tools:
 	$(GOCMD) install github.com/air-verse/air@latest
 	@echo "Installing goimports (import organizer)..."
 	$(GOCMD) install golang.org/x/tools/cmd/goimports@latest
+	@echo "Installing Ginkgo CLI (testing framework)..."
+	$(GOCMD) install github.com/onsi/ginkgo/v2/ginkgo@v2.25.3
+	@echo "Installing mockgen (mock generator)..."
+	$(GOCMD) install go.uber.org/mock/mockgen@latest
 	@echo "Development tools installed successfully!"
 
 # Database setup with Docker
@@ -138,6 +170,43 @@ db/logs:
 db/shell:
 	@echo "Connecting to PostgreSQL..."
 	docker exec -it avantpro-backend-postgres psql -U postgres -d avantpro_backend
+
+# Clear all tables using SQL script
+db/clear:
+	@echo "Clearing all database tables..."
+	@docker exec -i avantpro-backend-postgres psql -U postgres -d avantpro_backend < sql/truncate_all_tables.sql
+	@echo "All tables cleared!"
+
+# Show database table status
+db/status-tables:
+	@echo "Database table status:"
+	@docker exec -i avantpro-backend-postgres psql -U postgres -d avantpro_backend < sql/show_table_status.sql
+
+# Run SQL script manually
+db/run-sql:
+	@if [ -z "$(FILE)" ]; then \
+		echo "Usage: make db/run-sql FILE=path/to/script.sql"; \
+		echo "Example: make db/run-sql FILE=sql/truncate_all_tables.sql"; \
+		exit 1; \
+	fi
+	@echo "Running SQL script: $(FILE)"
+	@docker exec -i avantpro-backend-postgres psql -U postgres -d avantpro_backend < $(FILE)
+
+# Populate database with test data
+db/populate-test:
+	@echo "Populating database with test data..."
+	@echo "Clearing existing tables using SQL script..."
+	@docker exec -i avantpro-backend-postgres psql -U postgres -d avantpro_backend < sql/truncate_all_tables.sql > /dev/null 2>&1
+	@echo "Tables cleared successfully!"
+	@echo "Creating test data..."
+	@docker exec -i avantpro-backend-postgres psql -U postgres -d avantpro_backend < sql/populate_test_data.sql > /dev/null 2>&1 && echo "✅ Test data created successfully!" || echo "❌ Failed to create test data"
+	@echo "Verifying test data..."
+	@docker exec -i avantpro-backend-postgres psql -U postgres -d avantpro_backend < sql/verify_test_data.sql
+	@echo ""
+	@echo "🎉 Test data populated successfully!"
+	@echo "📧 Test user: rafabene@gmail.com"
+	@echo "🔑 Password: 123456"
+	@echo "🏢 Organizations: AvantPro Tecnologia, Consultoria Rafael"
 
 # Docker targets
 docker-build:
@@ -185,6 +254,9 @@ help:
 	@echo "  fix-imports   - Fix and organize imports (goimports)"
 	@echo "  vet           - Vet code"
 	@echo "  lint          - Lint code (golangci-lint)"
+	@echo "  generate      - Generate mocks (auto-called by test)"
+	@echo "  test          - Run tests (auto-generates mocks)"
+	@echo "  test-coverage - Run tests with coverage report"
 	@echo "  check         - Run all code quality checks"
 	@echo ""
 	@echo "Development:"
@@ -194,11 +266,15 @@ help:
 	@echo "  install-tools - Install all development tools"
 	@echo ""
 	@echo "Database:"
-	@echo "  db/setup      - Start PostgreSQL container"
-	@echo "  db/teardown   - Stop and remove PostgreSQL container"
-	@echo "  db/status     - Check PostgreSQL container status"
-	@echo "  db/logs       - Show PostgreSQL container logs"
-	@echo "  db/shell      - Connect to PostgreSQL shell"
+	@echo "  db/setup        - Start PostgreSQL container"
+	@echo "  db/teardown     - Stop and remove PostgreSQL container"
+	@echo "  db/status       - Check PostgreSQL container status"
+	@echo "  db/logs         - Show PostgreSQL container logs"
+	@echo "  db/shell        - Connect to PostgreSQL shell"
+	@echo "  db/clear        - Clear all tables using SQL script"
+	@echo "  db/status-tables - Show table record counts and status"
+	@echo "  db/run-sql      - Run SQL script (usage: make db/run-sql FILE=script.sql)"
+	@echo "  db/populate-test - Clear tables and create test user (rafabene@gmail.com/123456)"
 	@echo ""
 	@echo "Docker:"
 	@echo "  docker-build  - Build Docker image"

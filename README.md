@@ -6,13 +6,15 @@ API para gerenciamento de usuários com suporte a perfil completo, desenvolvida 
 
 - **Autenticação JWT**: Login, registro e recuperação de senha com tokens JWT
 - **Sistema de Organizações**: Criação, gerenciamento de membros e sistema de convites
+- **Sistema de Notificações**: Notificações com preferências por organização
 - **Perfil de Usuário**: Endereço completo (rua, cidade, bairro, CEP) e telefone
 - **Segurança**: Senhas criptografadas com bcrypt e autenticação baseada em tokens
 - **Validação**: Validação completa de dados usando go-playground/validator
 - **Paginação e Ordenação**: Lista paginada com ordenação por diferentes campos
+- **Headers Customizados**: Uso de headers Organization-ID e User-ID para contexto
 - **CORS**: Configuração de CORS para integração com frontend
 - **Documentação**: Swagger/OpenAPI gerado automaticamente
-- **Testes**: Cobertura completa com testes unitários, de repositório e integração
+- **Testes**: Cobertura completa com testes unitários Ginkgo/Gomega
 
 ## 🛠 Tecnologias
 
@@ -37,20 +39,49 @@ API para gerenciamento de usuários com suporte a perfil completo, desenvolvida 
 
 ### Organizações
 
+#### CRUD Básico
 - `POST /api/v1/organizations` - Criar organização
 - `GET /api/v1/organizations/my` - Listar organizações criadas pelo usuário
 - `GET /api/v1/organizations/memberships` - Listar organizações onde é membro
-- `GET /api/v1/organizations/{id}` - Buscar organização por ID
-- `PUT /api/v1/organizations/{id}` - Atualizar organização
-- `DELETE /api/v1/organizations/{id}` - Deletar organização
-- `GET /api/v1/organizations/{id}/members` - Listar membros da organização
-- `PUT /api/v1/organizations/{id}/members/{userId}` - Atualizar role do membro
-- `DELETE /api/v1/organizations/{id}/members/{userId}` - Remover membro
-- `POST /api/v1/organizations/{id}/invites` - Convidar usuário
-- `GET /api/v1/organizations/{id}/invites` - Listar convites da organização
-- `POST /api/v1/organizations/invites/token/{token}/accept` - Aceitar convite
+
+#### Gerenciamento (Requer Header `Organization-ID`)
+- `GET /api/v1/organizations` - Buscar organização específica
+- `PUT /api/v1/organizations` - Atualizar organização
+- `DELETE /api/v1/organizations` - Deletar organização
+
+#### Membros (Requer Header `Organization-ID`)
+- `GET /api/v1/organizations/members` - Listar membros da organização
+- `PUT /api/v1/organizations/members/{userId}` - Atualizar role do membro
+- `DELETE /api/v1/organizations/members/{userId}` - Remover membro
+
+#### Convites (Requer Header `Organization-ID`)
+- `POST /api/v1/organizations/invites` - Convidar usuário para organização
+- `GET /api/v1/organizations/invites` - Listar convites pendentes
+- `POST /api/v1/organizations/invites/token/{token}/accept` - Aceitar convite (público)
 - `DELETE /api/v1/organizations/invites/id/{inviteId}` - Revogar convite
 - `POST /api/v1/organizations/invites/id/{inviteId}/resend` - Reenviar convite
+
+#### Notificações (Requer Header `Organization-ID`)
+- `GET /api/v1/organizations/notifications` - Listar notificações da organização
+- `GET /api/v1/organizations/notifications/unread` - Listar notificações não lidas
+- `GET /api/v1/organizations/notifications/unread-count` - Contagem de não lidas
+- `PUT /api/v1/organizations/notifications/mark-all-read` - Marcar todas como lidas
+- `PUT /api/v1/organizations/notifications/{notifId}/read` - Marcar específica como lida
+- `DELETE /api/v1/organizations/notifications` - Deletar todas notificações
+- `DELETE /api/v1/organizations/notifications/{notifId}` - Deletar notificação específica
+
+#### Preferências de Notificação (Requer Header `Organization-ID`)
+- `GET /api/v1/organizations/notification-preferences` - Ver preferências da organização
+- `PUT /api/v1/organizations/notification-preferences` - Atualizar múltiplas preferências
+- `PUT /api/v1/organizations/notification-preferences/{event}` - Atualizar preferência específica
+- `POST /api/v1/organizations/notification-preferences/reset` - Resetar para padrão
+- `GET /api/v1/organizations/notification-preferences/events` - Listar eventos disponíveis
+- `POST /api/v1/organizations/notification-preferences/test` - Gerar notificação de teste
+
+> **📝 Importante:** Todos os endpoints de organização específica requerem o header `Organization-ID` contendo o UUID da organização. Exemplo:
+> ```
+> Organization-ID: 550e8400-e29b-41d4-a716-446655440000
+> ```
 
 ### Parâmetros de Consulta (Lista)
 

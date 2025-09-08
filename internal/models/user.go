@@ -8,61 +8,37 @@ import (
 	"gorm.io/gorm"
 )
 
-// User represents a user entity
-// @Description User information
+// User representa uma entidade de usuário
 type User struct {
-	ID                         uuid.UUID      `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()" example:"550e8400-e29b-41d4-a716-446655440000"`
-	Username                   string         `json:"username" gorm:"uniqueIndex;not null" validate:"required,email" example:"user@example.com"`
-	Name                       string         `json:"name" gorm:"not null" validate:"required,min=2,max=100" example:"John Doe"`
-	Password                   string         `json:"-" gorm:"not null" validate:"required,min=6"`
-	LastSelectedOrganizationID *uuid.UUID     `json:"last_selected_organization_id,omitempty" gorm:"type:uuid" example:"550e8400-e29b-41d4-a716-446655440002"`
-	Profile                    *Profile       `json:"profile,omitempty" gorm:"foreignKey:UserID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
-	CreatedAt                  time.Time      `json:"created_at" example:"2023-01-01T12:00:00Z"`
-	UpdatedAt                  time.Time      `json:"updated_at" example:"2023-01-01T12:00:00Z"`
-	DeletedAt                  gorm.DeletedAt `json:"-" gorm:"index"`
+	ID                         uuid.UUID  `gorm:"type:char(36);primaryKey"`
+	Username                   string     `gorm:"uniqueIndex;not null"`
+	Name                       string     `gorm:"not null"`
+	Password                   string     `gorm:"not null"`
+	LastSelectedOrganizationID *uuid.UUID `gorm:"type:char(36)"`
+	FailedLoginAttempts        int        `gorm:"default:0"`
+	LastFailedLoginAt          *time.Time
+	LockedUntil                *time.Time
+	Profile                    *Profile `gorm:"foreignKey:UserID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
+	CreatedAt                  time.Time
+	UpdatedAt                  time.Time
+	DeletedAt                  gorm.DeletedAt `gorm:"index"`
 }
 
-// Profile represents a user profile with address information
-// @Description User profile with address and contact information
+// Profile representa o perfil de um usuário com informações de endereço
 type Profile struct {
-	ID        uuid.UUID      `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()" example:"550e8400-e29b-41d4-a716-446655440001"`
-	UserID    uuid.UUID      `json:"user_id" gorm:"type:uuid;not null;uniqueIndex" example:"550e8400-e29b-41d4-a716-446655440000"`
-	Street    string         `json:"street" gorm:"not null" validate:"required,min=5,max=200" example:"123 Main Street"`
-	City      string         `json:"city" gorm:"not null" validate:"required,min=2,max=100" example:"São Paulo"`
-	District  string         `json:"district" gorm:"not null" validate:"required,min=2,max=100" example:"Centro"`
-	ZipCode   string         `json:"zip_code" gorm:"not null" validate:"required,len=8" example:"01234567"`
-	Phone     string         `json:"phone" gorm:"not null" validate:"required,min=10,max=15" example:"11987654321"`
-	CreatedAt time.Time      `json:"created_at" example:"2023-01-01T12:00:00Z"`
-	UpdatedAt time.Time      `json:"updated_at" example:"2023-01-01T12:00:00Z"`
-	DeletedAt gorm.DeletedAt `json:"-" gorm:"index"`
+	ID        uuid.UUID `gorm:"type:char(36);primaryKey"`
+	UserID    uuid.UUID `gorm:"type:char(36);not null;uniqueIndex"`
+	Street    string    `gorm:"not null"`
+	City      string    `gorm:"not null"`
+	District  string    `gorm:"not null"`
+	ZipCode   string    `gorm:"not null"`
+	Phone     string    `gorm:"not null"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	DeletedAt gorm.DeletedAt `gorm:"index"`
 }
 
-// UserResponse represents the response body for user operations
-// @Description User response
-type UserResponse struct {
-	ID                         uuid.UUID        `json:"id" example:"550e8400-e29b-41d4-a716-446655440000"`
-	Username                   string           `json:"username" example:"user@example.com"`
-	Name                       string           `json:"name" example:"John Doe"`
-	LastSelectedOrganizationID *uuid.UUID       `json:"last_selected_organization_id,omitempty" example:"550e8400-e29b-41d4-a716-446655440002"`
-	Profile                    *ProfileResponse `json:"profile,omitempty"`
-	CreatedAt                  time.Time        `json:"created_at" example:"2023-01-01T12:00:00Z"`
-	UpdatedAt                  time.Time        `json:"updated_at" example:"2023-01-01T12:00:00Z"`
-}
-
-// ProfileResponse represents the response body for profile operations
-// @Description Profile response
-type ProfileResponse struct {
-	ID        uuid.UUID `json:"id" example:"550e8400-e29b-41d4-a716-446655440001"`
-	Street    string    `json:"street" example:"123 Main Street"`
-	City      string    `json:"city" example:"São Paulo"`
-	District  string    `json:"district" example:"Centro"`
-	ZipCode   string    `json:"zip_code" example:"01234567"`
-	Phone     string    `json:"phone" example:"11987654321"`
-	CreatedAt time.Time `json:"created_at" example:"2023-01-01T12:00:00Z"`
-	UpdatedAt time.Time `json:"updated_at" example:"2023-01-01T12:00:00Z"`
-}
-
-// HashPassword hashes the user password using bcrypt
+// HashPassword faz o hash da senha do usuário usando bcrypt
 func (u *User) HashPassword() error {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(u.Password), bcrypt.DefaultCost)
 	if err != nil {
@@ -72,69 +48,61 @@ func (u *User) HashPassword() error {
 	return nil
 }
 
-// CheckPassword verifies if the provided password matches the hashed password
+// CheckPassword verifica se a senha fornecida corresponde à senha com hash
 func (u *User) CheckPassword(password string) bool {
 	err := bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(password))
 	return err == nil
 }
 
-// BeforeCreate is a GORM hook that runs before creating a user
+// BeforeCreate é um hook do GORM que executa antes de criar um usuário
 func (u *User) BeforeCreate(tx *gorm.DB) error {
 	return u.HashPassword()
 }
 
-// BeforeUpdate is a GORM hook that runs before updating a user
+// BeforeUpdate é um hook do GORM que executa antes de atualizar um usuário
 func (u *User) BeforeUpdate(tx *gorm.DB) error {
-	// Only hash password if it's being updated
+	// Fazer hash da senha apenas se estiver sendo atualizada
 	if tx.Statement.Changed("Password") {
 		return u.HashPassword()
 	}
 	return nil
 }
 
-// LoginRequest represents the request body for user login
-// @Description User login request
-type LoginRequest struct {
-	Email    string `json:"email" validate:"required,email" example:"user@example.com"`
-	Password string `json:"password" validate:"required" example:"password123"`
+// IsLocked verifica se a conta do usuário está atualmente bloqueada
+func (u *User) IsLocked() bool {
+	return u.LockedUntil != nil && time.Now().Before(*u.LockedUntil)
 }
 
-// RegisterRequest represents the request body for user registration
-// @Description User registration request
-type RegisterRequest struct {
-	Email    string `json:"email" validate:"required,email" example:"user@example.com"`
-	Name     string `json:"name" validate:"required,min=2,max=100" example:"John Doe"`
-	Password string `json:"password" validate:"required,min=6" example:"password123"`
+// GetRemainingLockTime retorna o tempo restante até o desbloqueio
+func (u *User) GetRemainingLockTime() time.Duration {
+	if !u.IsLocked() {
+		return 0
+	}
+	return time.Until(*u.LockedUntil)
 }
 
-// LoginResponse represents the response body for successful login
-// @Description Login response with token and user info
-type LoginResponse struct {
-	Token string       `json:"token" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`
-	User  UserResponse `json:"user"`
+// RecordFailedLogin incrementa as tentativas de login falhadas e atualiza o timestamp
+func (u *User) RecordFailedLogin() {
+	u.FailedLoginAttempts++
+	now := time.Now()
+	u.LastFailedLoginAt = &now
 }
 
-// PasswordResetRequest represents the request body for password reset
-// @Description Password reset request
-type PasswordResetRequest struct {
-	Email string `json:"email" validate:"required,email" example:"user@example.com"`
+// LockAccount bloqueia a conta pela duração especificada
+func (u *User) LockAccount(duration time.Duration) {
+	lockUntil := time.Now().Add(duration)
+	u.LockedUntil = &lockUntil
 }
 
-// PasswordResetConfirmRequest represents the request body for password reset confirmation
-// @Description Password reset confirmation request
-type PasswordResetConfirmRequest struct {
-	Token       string `json:"token" validate:"required" example:"reset-token-123"`
-	NewPassword string `json:"new_password" validate:"required,min=6" example:"newpassword123"`
+// UnlockAccount desbloqueia a conta e redefine as tentativas falhadas
+func (u *User) UnlockAccount() {
+	u.LockedUntil = nil
+	u.FailedLoginAttempts = 0
+	u.LastFailedLoginAt = nil
 }
 
-// MessageResponse represents a simple message response
-// @Description Simple message response
-type MessageResponse struct {
-	Message string `json:"message" example:"Operation completed successfully"`
-}
-
-// UpdateLastSelectedOrganizationRequest represents the request body for updating last selected organization
-// @Description Update last selected organization request
-type UpdateLastSelectedOrganizationRequest struct {
-	OrganizationID *uuid.UUID `json:"organization_id" example:"550e8400-e29b-41d4-a716-446655440002"`
+// ResetFailedAttempts limpa as tentativas de login falhadas após login bem-sucedido
+func (u *User) ResetFailedAttempts() {
+	u.FailedLoginAttempts = 0
+	u.LastFailedLoginAt = nil
 }

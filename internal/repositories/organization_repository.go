@@ -1,5 +1,7 @@
 package repositories
 
+//go:generate mockgen -source=organization_repository.go -destination=../services/tests/mocks/organization_repository_mock.go -package=mocks
+
 import (
 	"crypto/rand"
 	"encoding/hex"

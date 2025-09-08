@@ -11,17 +11,87 @@ import (
 	"github.com/moogar0880/problems"
 )
 
-// ProblemDetail represents an RFC 7807 problem detail for Swagger documentation
-// @Description Error response following RFC 7807 Problem Details for HTTP APIs
+// ProblemDetail representa um detalhe de problema RFC 7807 para documentação Swagger
+// @Description Resposta de erro seguindo RFC 7807 Problem Details para APIs HTTP
 type ProblemDetail struct {
-	Type     string `json:"type" example:"https://avantpro-backend.com/errors/validation"`
-	Title    string `json:"title" example:"Validation Error"`
+	Type     string `json:"type" example:"https://avantpro-backend.com/errors/internal"`
+	Title    string `json:"title" example:"Erro Interno do Servidor"`
+	Status   int    `json:"status" example:"500"`
+	Detail   string `json:"detail" example:"Ocorreu um erro inesperado. Tente novamente mais tarde."`
+	Instance string `json:"instance,omitempty" example:"/api/v1/notifications"`
+}
+
+// BadRequestProblem representa um erro 400 Bad Request
+// @Description Resposta de erro de requisição inválida
+type BadRequestProblem struct {
+	Type     string `json:"type" example:"https://avantpro-backend.com/errors/bad-request"`
+	Title    string `json:"title" example:"Requisição Inválida"`
 	Status   int    `json:"status" example:"400"`
-	Detail   string `json:"detail" example:"Invalid input data"`
+	Detail   string `json:"detail" example:"Formato de requisição ou parâmetros inválidos"`
+	Instance string `json:"instance,omitempty" example:"/api/v1/notifications"`
+}
+
+// UnauthorizedProblem representa um erro 401 Unauthorized
+// @Description Resposta de erro não autorizado
+type UnauthorizedProblem struct {
+	Type     string `json:"type" example:"https://avantpro-backend.com/errors/unauthorized"`
+	Title    string `json:"title" example:"Não Autorizado"`
+	Status   int    `json:"status" example:"401"`
+	Detail   string `json:"detail" example:"Autenticação necessária ou token inválido"`
+	Instance string `json:"instance,omitempty" example:"/api/v1/notifications"`
+}
+
+// ForbiddenProblem representa um erro 403 Forbidden
+// @Description Resposta de erro proibido
+type ForbiddenProblem struct {
+	Type     string `json:"type" example:"https://avantpro-backend.com/errors/forbidden"`
+	Title    string `json:"title" example:"Proibido"`
+	Status   int    `json:"status" example:"403"`
+	Detail   string `json:"detail" example:"Acesso negado para este recurso"`
+	Instance string `json:"instance,omitempty" example:"/api/v1/organizations"`
+}
+
+// NotFoundProblem representa um erro 404 Not Found
+// @Description Resposta de erro não encontrado
+type NotFoundProblem struct {
+	Type     string `json:"type" example:"https://avantpro-backend.com/errors/not-found"`
+	Title    string `json:"title" example:"Recurso Não Encontrado"`
+	Status   int    `json:"status" example:"404"`
+	Detail   string `json:"detail" example:"O recurso solicitado não foi encontrado"`
+	Instance string `json:"instance,omitempty" example:"/api/v1/notifications/123"`
+}
+
+// ConflictProblem representa um erro 409 Conflict
+// @Description Resposta de erro de conflito
+type ConflictProblem struct {
+	Type     string `json:"type" example:"https://avantpro-backend.com/errors/conflict"`
+	Title    string `json:"title" example:"Conflito de Recurso"`
+	Status   int    `json:"status" example:"409"`
+	Detail   string `json:"detail" example:"Recurso já existe ou entra em conflito com o estado atual"`
 	Instance string `json:"instance,omitempty" example:"/api/v1/users"`
 }
 
-// Common error types for the API
+// GoneProblem representa um erro 410 Gone
+// @Description Resposta de erro de recurso indisponível
+type GoneProblem struct {
+	Type     string `json:"type" example:"https://avantpro-backend.com/errors/gone"`
+	Title    string `json:"title" example:"Recurso Indisponível"`
+	Status   int    `json:"status" example:"410"`
+	Detail   string `json:"detail" example:"Recurso não está mais disponível (ex: convite expirado)"`
+	Instance string `json:"instance,omitempty" example:"/api/v1/invites/token/abc123"`
+}
+
+// InternalServerProblem representa um erro 500 Internal Server Error
+// @Description Resposta de erro interno do servidor
+type InternalServerProblem struct {
+	Type     string `json:"type" example:"https://avantpro-backend.com/errors/internal"`
+	Title    string `json:"title" example:"Erro Interno do Servidor"`
+	Status   int    `json:"status" example:"500"`
+	Detail   string `json:"detail" example:"Ocorreu um erro inesperado. Tente novamente mais tarde."`
+	Instance string `json:"instance,omitempty" example:"/api/v1/notifications"`
+}
+
+// Tipos de erro comuns para a API
 const (
 	// Type URIs for different error categories
 	ValidationErrorType   = "https://avantpro-backend.com/errors/validation"
@@ -34,19 +104,17 @@ const (
 	GoneErrorType         = "https://avantpro-backend.com/errors/gone"
 )
 
-// Common error messages
+// Mensagens de erro comuns
 const (
-	ErrUsernameAlreadyExists = "username already exists"
-	ErrUserNotFound          = "user not found"
-	ErrInvalidCredentials    = "invalid credentials"
-	ErrWeakPassword          = "password must be at least 6 characters long"
+	ErrUsernameAlreadyExists = "nome de usuário já existe"
+	ErrUserNotFound          = "usuário não encontrado"
 )
 
 // ValidationError creates a validation error problem
 func ValidationError(detail string, instance ...string) *problems.Problem {
 	prob := problems.NewDetailedProblem(http.StatusBadRequest, detail)
 	prob.Type = ValidationErrorType
-	prob.Title = "Validation Error"
+	prob.Title = "Erro de Validação"
 	if len(instance) > 0 {
 		prob.Instance = instance[0]
 	}
@@ -57,7 +125,7 @@ func ValidationError(detail string, instance ...string) *problems.Problem {
 func NotFoundError(resource string, instance ...string) *problems.Problem {
 	prob := problems.NewDetailedProblem(http.StatusNotFound, fmt.Sprintf("%s not found", resource))
 	prob.Type = NotFoundErrorType
-	prob.Title = "Resource Not Found"
+	prob.Title = "Recurso Não Encontrado"
 	if len(instance) > 0 {
 		prob.Instance = instance[0]
 	}
@@ -68,7 +136,7 @@ func NotFoundError(resource string, instance ...string) *problems.Problem {
 func ConflictError(detail string, instance ...string) *problems.Problem {
 	prob := problems.NewDetailedProblem(http.StatusConflict, detail)
 	prob.Type = ConflictErrorType
-	prob.Title = "Resource Conflict"
+	prob.Title = "Conflito de Recurso"
 	if len(instance) > 0 {
 		prob.Instance = instance[0]
 	}
@@ -77,9 +145,9 @@ func ConflictError(detail string, instance ...string) *problems.Problem {
 
 // InternalError creates an internal server error problem
 func InternalError(instance ...string) *problems.Problem {
-	prob := problems.NewDetailedProblem(http.StatusInternalServerError, "An unexpected error occurred. Please try again later.")
+	prob := problems.NewDetailedProblem(http.StatusInternalServerError, "Ocorreu um erro inesperado. Tente novamente mais tarde.")
 	prob.Type = InternalErrorType
-	prob.Title = "Internal Server Error"
+	prob.Title = "Erro Interno do Servidor"
 	if len(instance) > 0 {
 		prob.Instance = instance[0]
 	}
@@ -90,7 +158,7 @@ func InternalError(instance ...string) *problems.Problem {
 func BadRequestError(detail string, instance ...string) *problems.Problem {
 	prob := problems.NewDetailedProblem(http.StatusBadRequest, detail)
 	prob.Type = BadRequestErrorType
-	prob.Title = "Bad Request"
+	prob.Title = "Requisição Inválida"
 	if len(instance) > 0 {
 		prob.Instance = instance[0]
 	}
@@ -101,7 +169,7 @@ func BadRequestError(detail string, instance ...string) *problems.Problem {
 func UnauthorizedError(detail string, instance ...string) *problems.Problem {
 	prob := problems.NewDetailedProblem(http.StatusUnauthorized, detail)
 	prob.Type = UnauthorizedErrorType
-	prob.Title = "Unauthorized"
+	prob.Title = "Não Autorizado"
 	if len(instance) > 0 {
 		prob.Instance = instance[0]
 	}
@@ -112,7 +180,7 @@ func UnauthorizedError(detail string, instance ...string) *problems.Problem {
 func ForbiddenError(detail string, instance ...string) *problems.Problem {
 	prob := problems.NewDetailedProblem(http.StatusForbidden, detail)
 	prob.Type = ForbiddenErrorType
-	prob.Title = "Forbidden"
+	prob.Title = "Proibido"
 	if len(instance) > 0 {
 		prob.Instance = instance[0]
 	}
@@ -123,7 +191,7 @@ func ForbiddenError(detail string, instance ...string) *problems.Problem {
 func GoneError(detail string, instance ...string) *problems.Problem {
 	prob := problems.NewDetailedProblem(http.StatusGone, detail)
 	prob.Type = GoneErrorType
-	prob.Title = "Resource Gone"
+	prob.Title = "Recurso Indisponível"
 	if len(instance) > 0 {
 		prob.Instance = instance[0]
 	}
@@ -132,12 +200,12 @@ func GoneError(detail string, instance ...string) *problems.Problem {
 
 // RespondWithProblem sends a problem details response using Gin
 func RespondWithProblem(c *gin.Context, prob *problems.Problem) {
-	// Set the Content-Type to application/problem+json as per RFC 7807
+	// Definir Content-Type como application/problem+json conforme RFC 7807
 	c.Header("Content-Type", "application/problem+json")
 	c.JSON(prob.Status, prob)
 }
 
-// Helper to extract instance path from Gin context
+// Auxiliar para extrair caminho da instância do contexto Gin
 func GetInstance(c *gin.Context) string {
 	return c.Request.URL.Path
 }
@@ -155,7 +223,7 @@ func FormatValidationError(err error) error {
 		tag := validationErr.Tag()
 		param := validationErr.Param()
 
-		// Convert field name to friendly name
+		// Converter nome do campo para nome amigável
 		friendlyName := strings.ToLower(field)
 
 		message := formatFieldError(friendlyName, tag, param)
@@ -175,39 +243,39 @@ func FormatValidationError(err error) error {
 func formatFieldError(fieldName, tag, param string) string {
 	switch tag {
 	case "required":
-		return fmt.Sprintf("%s is required", fieldName)
+		return fmt.Sprintf("%s é obrigatório", fieldName)
 	case "min":
-		return fmt.Sprintf("%s must be at least %s characters long", fieldName, param)
+		return fmt.Sprintf("%s deve ter pelo menos %s caracteres", fieldName, param)
 	case "max":
-		return fmt.Sprintf("%s must be at most %s characters long", fieldName, param)
+		return fmt.Sprintf("%s deve ter no máximo %s caracteres", fieldName, param)
 	case "email":
-		return fmt.Sprintf("%s must be a valid email address", fieldName)
+		return fmt.Sprintf("%s deve ser um endereço de email válido", fieldName)
 	case "len":
-		return fmt.Sprintf("%s must be exactly %s characters long", fieldName, param)
+		return fmt.Sprintf("%s deve ter exatamente %s caracteres", fieldName, param)
 	case "gt":
-		return fmt.Sprintf("%s must be greater than %s", fieldName, param)
+		return fmt.Sprintf("%s deve ser maior que %s", fieldName, param)
 	case "gte":
-		return fmt.Sprintf("%s must be greater than or equal to %s", fieldName, param)
+		return fmt.Sprintf("%s deve ser maior ou igual a %s", fieldName, param)
 	case "lt":
-		return fmt.Sprintf("%s must be less than %s", fieldName, param)
+		return fmt.Sprintf("%s deve ser menor que %s", fieldName, param)
 	case "lte":
-		return fmt.Sprintf("%s must be less than or equal to %s", fieldName, param)
+		return fmt.Sprintf("%s deve ser menor ou igual a %s", fieldName, param)
 	case "alphanum":
-		return fmt.Sprintf("%s must contain only alphanumeric characters", fieldName)
+		return fmt.Sprintf("%s deve conter apenas caracteres alfanuméricos", fieldName)
 	case "alpha":
-		return fmt.Sprintf("%s must contain only alphabetic characters", fieldName)
+		return fmt.Sprintf("%s deve conter apenas caracteres alfabéticos", fieldName)
 	case "numeric":
-		return fmt.Sprintf("%s must contain only numeric characters", fieldName)
+		return fmt.Sprintf("%s deve conter apenas caracteres numéricos", fieldName)
 	case "url":
-		return fmt.Sprintf("%s must be a valid URL", fieldName)
+		return fmt.Sprintf("%s deve ser uma URL válida", fieldName)
 	case "uuid":
-		return fmt.Sprintf("%s must be a valid UUID", fieldName)
+		return fmt.Sprintf("%s deve ser um UUID válido", fieldName)
 	default:
-		return fmt.Sprintf("%s is invalid", fieldName)
+		return fmt.Sprintf("%s é inválido", fieldName)
 	}
 }
 
-// Convenience handlers for Gin controllers
+// Manipuladores de conveniência para controllers Gin
 
 // HandleValidationError handles validation errors
 func HandleValidationError(c *gin.Context, detail string) {
@@ -229,7 +297,7 @@ func HandleConflictError(c *gin.Context, detail string) {
 
 // HandleInternalError handles internal server errors
 func HandleInternalError(c *gin.Context, detail string, err error) {
-	// Log the actual error for debugging (don't expose to client)
+	// Registrar o erro real para debug (não expor ao cliente)
 	if err != nil {
 		// TODO: Add proper logging
 		fmt.Printf("Internal error: %v\n", err)

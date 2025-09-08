@@ -19,9 +19,9 @@ type NotificationService interface {
 	// Parameters:
 	//   - req: Create notification request containing user ID, title, message, type, etc.
 	// Returns:
-	//   - *models.NotificationResponse: Created notification information
+	//   - *NotificationResponse: Created notification information
 	//   - error: Error if validation fails or creation fails
-	CreateNotification(req *models.CreateNotificationRequest) (*models.NotificationResponse, error)
+	CreateNotification(req *CreateNotificationRequest) (*NotificationResponse, error)
 
 	// NotifyMemberJoined creates a notification for organization admins when a new member joins.
 	// This method finds all organization admins and creates notifications for them.
@@ -43,10 +43,10 @@ type NotificationService interface {
 	//   - sortBy: Field to sort by (title, type, read, created_at, updated_at)
 	//   - sortOrder: Sort order (asc or desc)
 	// Returns:
-	//   - []models.NotificationResponse: List of notifications
+	//   - []NotificationResponse: List of notifications
 	//   - int64: Total count of notifications for pagination
 	//   - error: Error if retrieval fails
-	GetUserNotifications(userID uuid.UUID, organizationID *uuid.UUID, limit, offset int, sortBy, sortOrder string) ([]models.NotificationResponse, int64, error)
+	GetUserNotifications(userID uuid.UUID, organizationID *uuid.UUID, limit, offset int, sortBy, sortOrder string) ([]NotificationResponse, int64, error)
 
 	// GetUnreadNotifications retrieves all unread notifications for a user.
 	// This method returns notifications that have not been marked as read.
@@ -54,9 +54,9 @@ type NotificationService interface {
 	//   - userID: ID of the user to get unread notifications for
 	//   - organizationID: Optional organization ID to filter notifications (nil for all organizations)
 	// Returns:
-	//   - []models.NotificationResponse: List of unread notifications
+	//   - []NotificationResponse: List of unread notifications
 	//   - error: Error if retrieval fails
-	GetUnreadNotifications(userID uuid.UUID, organizationID *uuid.UUID) ([]models.NotificationResponse, error)
+	GetUnreadNotifications(userID uuid.UUID, organizationID *uuid.UUID) ([]NotificationResponse, error)
 
 	// GetUnreadCount retrieves the count of unread notifications for a user.
 	// This method returns the number of unread notifications for display in UI badges.
@@ -103,17 +103,11 @@ type NotificationService interface {
 	DeleteAllNotifications(userID uuid.UUID) error
 }
 
-// WebSocketHub interface for WebSocket operations
-type WebSocketHub interface {
-	BroadcastNotification(userID uuid.UUID, notification *models.NotificationResponse, unreadCount int)
-}
-
 // notificationService implements the NotificationService interface
 type notificationService struct {
 	notificationRepo repositories.NotificationRepository
 	organizationRepo repositories.OrganizationRepositoryInterface
 	userRepo         repositories.UserRepository
-	wsHub            WebSocketHub
 }
 
 // NewNotificationService creates a new NotificationService instance
@@ -121,18 +115,17 @@ func NewNotificationService(
 	notificationRepo repositories.NotificationRepository,
 	organizationRepo repositories.OrganizationRepositoryInterface,
 	userRepo repositories.UserRepository,
-	wsHub WebSocketHub,
+	_ interface{}, // Deprecated WebSocket parameter, kept for compatibility
 ) NotificationService {
 	return &notificationService{
 		notificationRepo: notificationRepo,
 		organizationRepo: organizationRepo,
 		userRepo:         userRepo,
-		wsHub:            wsHub,
 	}
 }
 
 // CreateNotification creates a new notification for a user
-func (s *notificationService) CreateNotification(req *models.CreateNotificationRequest) (*models.NotificationResponse, error) {
+func (s *notificationService) CreateNotification(req *CreateNotificationRequest) (*NotificationResponse, error) {
 	// Validate user exists
 	_, err := s.userRepo.GetByID(req.UserID)
 	if err != nil {
@@ -157,7 +150,7 @@ func (s *notificationService) CreateNotification(req *models.CreateNotificationR
 		OrganizationID: req.OrganizationID,
 		Title:          req.Title,
 		Message:        req.Message,
-		Type:           req.Type,
+		Type:           models.NotificationType(req.Type),
 		Data:           req.Data,
 		Read:           false,
 	}
@@ -167,11 +160,11 @@ func (s *notificationService) CreateNotification(req *models.CreateNotificationR
 	}
 
 	// Convert to response
-	response := &models.NotificationResponse{
+	response := &NotificationResponse{
 		ID:             notification.ID,
 		Title:          notification.Title,
 		Message:        notification.Message,
-		Type:           notification.Type,
+		Type:           NotificationType(notification.Type),
 		Read:           notification.Read,
 		ReadAt:         notification.ReadAt,
 		Data:           notification.Data,
@@ -179,19 +172,7 @@ func (s *notificationService) CreateNotification(req *models.CreateNotificationR
 		CreatedAt:      notification.CreatedAt,
 	}
 
-	// Get updated unread count for WebSocket broadcast (passing nil for organizationID to get total count)
-	unreadCountInt64, err := s.notificationRepo.GetUnreadCountByUserID(req.UserID, nil)
-	if err != nil {
-		// Log error but don't fail the notification creation
-		fmt.Printf("Warning: Failed to get unread count for WebSocket broadcast: %v", err)
-		unreadCountInt64 = 0
-	}
-	unreadCount := int(unreadCountInt64)
-
-	// Broadcast to WebSocket if hub is available
-	if s.wsHub != nil {
-		s.wsHub.BroadcastNotification(req.UserID, response, unreadCount)
-	}
+	// Notification created successfully
 
 	return response, nil
 }
@@ -218,12 +199,12 @@ func (s *notificationService) NotifyMemberJoined(organizationID uuid.UUID, newMe
 				continue
 			}
 
-			notificationReq := &models.CreateNotificationRequest{
+			notificationReq := &CreateNotificationRequest{
 				UserID:         member.UserID,
 				OrganizationID: organizationID,
 				Title:          "Novo membro na organização",
 				Message:        fmt.Sprintf("%s foi adicionado à organização %s", newMemberName, organization.Name),
-				Type:           models.NotificationTypeInfo,
+				Type:           NotificationTypeInfo,
 				Data:           fmt.Sprintf("{\"action\":\"member_joined\",\"member_id\":\"%s\",\"organization_id\":\"%s\"}", newMemberID, organizationID),
 			}
 
@@ -239,20 +220,20 @@ func (s *notificationService) NotifyMemberJoined(organizationID uuid.UUID, newMe
 }
 
 // GetUserNotifications retrieves paginated notifications for a specific user
-func (s *notificationService) GetUserNotifications(userID uuid.UUID, organizationID *uuid.UUID, limit, offset int, sortBy, sortOrder string) ([]models.NotificationResponse, int64, error) {
+func (s *notificationService) GetUserNotifications(userID uuid.UUID, organizationID *uuid.UUID, limit, offset int, sortBy, sortOrder string) ([]NotificationResponse, int64, error) {
 	notifications, total, err := s.notificationRepo.GetByUserID(userID, organizationID, limit, offset, sortBy, sortOrder)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to get user notifications: %w", err)
 	}
 
 	// Convert to response format
-	responses := make([]models.NotificationResponse, len(notifications))
+	responses := make([]NotificationResponse, len(notifications))
 	for i, notification := range notifications {
-		responses[i] = models.NotificationResponse{
+		responses[i] = NotificationResponse{
 			ID:             notification.ID,
 			Title:          notification.Title,
 			Message:        notification.Message,
-			Type:           notification.Type,
+			Type:           NotificationType(notification.Type),
 			Read:           notification.Read,
 			ReadAt:         notification.ReadAt,
 			Data:           notification.Data,
@@ -265,20 +246,20 @@ func (s *notificationService) GetUserNotifications(userID uuid.UUID, organizatio
 }
 
 // GetUnreadNotifications retrieves all unread notifications for a user
-func (s *notificationService) GetUnreadNotifications(userID uuid.UUID, organizationID *uuid.UUID) ([]models.NotificationResponse, error) {
+func (s *notificationService) GetUnreadNotifications(userID uuid.UUID, organizationID *uuid.UUID) ([]NotificationResponse, error) {
 	notifications, err := s.notificationRepo.GetUnreadByUserID(userID, organizationID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get unread notifications: %w", err)
 	}
 
 	// Convert to response format
-	responses := make([]models.NotificationResponse, len(notifications))
+	responses := make([]NotificationResponse, len(notifications))
 	for i, notification := range notifications {
-		responses[i] = models.NotificationResponse{
+		responses[i] = NotificationResponse{
 			ID:             notification.ID,
 			Title:          notification.Title,
 			Message:        notification.Message,
-			Type:           notification.Type,
+			Type:           NotificationType(notification.Type),
 			Read:           notification.Read,
 			ReadAt:         notification.ReadAt,
 			Data:           notification.Data,

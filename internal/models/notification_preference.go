@@ -7,7 +7,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// NotificationEvent represents the type of event that triggers a notification
+// NotificationEvent representa o tipo de evento que aciona uma notificação
 type NotificationEvent string
 
 const (
@@ -20,60 +20,21 @@ const (
 	NotificationEventOrganizationUpdate NotificationEvent = "organization_update"
 )
 
-// NotificationPreference represents organization preferences for notification types
-// @Description Organization notification preferences
+// NotificationPreference representa as preferências da organização para tipos de notificação
 type NotificationPreference struct {
-	ID             uuid.UUID         `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()" example:"550e8400-e29b-41d4-a716-446655440000"`
-	OrganizationID uuid.UUID         `json:"organization_id" gorm:"type:uuid;not null;index" example:"550e8400-e29b-41d4-a716-446655440001"`
-	Event          NotificationEvent `json:"event" gorm:"not null" validate:"required" example:"member_joined"`
-	Enabled        bool              `json:"enabled" gorm:"default:true" example:"true"`
-	CreatedAt      time.Time         `json:"created_at" example:"2023-01-01T12:00:00Z"`
-	UpdatedAt      time.Time         `json:"updated_at" example:"2023-01-01T12:00:00Z"`
-	DeletedAt      gorm.DeletedAt    `json:"-" gorm:"index"`
+	ID             uuid.UUID         `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	OrganizationID uuid.UUID         `gorm:"type:uuid;not null;index"`
+	Event          NotificationEvent `gorm:"not null"`
+	Enabled        bool              `gorm:"default:true"`
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	DeletedAt      gorm.DeletedAt `gorm:"index"`
 
-	// Associations
-	Organization *Organization `json:"organization,omitempty" gorm:"foreignKey:OrganizationID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
+	// Associações
+	Organization *Organization `gorm:"foreignKey:OrganizationID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
 }
 
-// NotificationPreferenceResponse represents the response body for notification preference operations
-// @Description Notification preference response
-type NotificationPreferenceResponse struct {
-	ID        uuid.UUID         `json:"id" example:"550e8400-e29b-41d4-a716-446655440000"`
-	Event     NotificationEvent `json:"event" example:"member_joined"`
-	Enabled   bool              `json:"enabled" example:"true"`
-	CreatedAt time.Time         `json:"created_at" example:"2023-01-01T12:00:00Z"`
-	UpdatedAt time.Time         `json:"updated_at" example:"2023-01-01T12:00:00Z"`
-}
-
-// NotificationPreferenceUpdateRequest represents the request body for updating notification preferences
-// @Description Update notification preferences request
-type NotificationPreferenceUpdateRequest struct {
-	Enabled *bool `json:"enabled,omitempty" example:"true"`
-}
-
-// NotificationPreferenceBulkUpdateRequest represents the request body for bulk updating notification preferences
-// @Description Bulk update notification preferences request
-type NotificationPreferenceBulkUpdateRequest struct {
-	Preferences []NotificationPreferenceBulkItem `json:"preferences" validate:"required,min=1"`
-}
-
-// NotificationPreferenceBulkItem represents a single preference item in bulk update
-// @Description Single notification preference item for bulk update
-type NotificationPreferenceBulkItem struct {
-	Event   NotificationEvent `json:"event" validate:"required" example:"member_joined"`
-	Enabled bool              `json:"enabled" example:"true"`
-}
-
-// TestNotificationRequest represents the request body for generating a test notification
-// @Description Test notification request
-type TestNotificationRequest struct {
-	OrganizationID uuid.UUID        `json:"organization_id" validate:"required" example:"550e8400-e29b-41d4-a716-446655440002"`
-	Type           NotificationType `json:"type" validate:"required,oneof=info success warning error" example:"info"`
-	Title          string           `json:"title" validate:"required,min=1,max=200" example:"Test Notification"`
-	Message        string           `json:"message" validate:"required,min=1,max=500" example:"This is a test notification to verify your settings"`
-}
-
-// GetDefaultNotificationPreferences returns the default notification preferences for an organization
+// GetDefaultNotificationPreferences retorna as preferências de notificação padrão para uma organização
 func GetDefaultNotificationPreferences(organizationID uuid.UUID) []NotificationPreference {
 	events := []NotificationEvent{
 		NotificationEventMemberJoined,
@@ -90,14 +51,14 @@ func GetDefaultNotificationPreferences(organizationID uuid.UUID) []NotificationP
 		preferences[i] = NotificationPreference{
 			OrganizationID: organizationID,
 			Event:          event,
-			Enabled:        true, // All notifications enabled by default
+			Enabled:        true,
 		}
 	}
 
 	return preferences
 }
 
-// GetEventDescription returns a human-readable description for a notification event
+// GetDescription retorna uma descrição legível para um evento de notificação
 func (event NotificationEvent) GetDescription() string {
 	switch event {
 	case NotificationEventMemberJoined:
@@ -119,7 +80,7 @@ func (event NotificationEvent) GetDescription() string {
 	}
 }
 
-// IsValidEvent checks if the event is valid
+// IsValid verifica se o evento é válido
 func (event NotificationEvent) IsValid() bool {
 	switch event {
 	case NotificationEventMemberJoined,
@@ -133,4 +94,10 @@ func (event NotificationEvent) IsValid() bool {
 	default:
 		return false
 	}
+}
+
+// NotificationPreferenceBulkItem representa um item de preferência único na atualização em lote
+type NotificationPreferenceBulkItem struct {
+	Event   NotificationEvent `json:"event" validate:"required" example:"member_joined"`
+	Enabled bool              `json:"enabled" example:"true"`
 }

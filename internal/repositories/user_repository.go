@@ -1,5 +1,7 @@
 package repositories
 
+//go:generate mockgen -source=user_repository.go -destination=../services/tests/mocks/user_repository_mock.go -package=mocks
+
 import (
 	"github.com/google/uuid"
 	"gorm.io/gorm"

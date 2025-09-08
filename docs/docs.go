@@ -11,9 +11,9 @@ const docTemplate = `{
         "title": "{{.Title}}",
         "termsOfService": "http://swagger.io/terms/",
         "contact": {
-            "name": "API Support",
+            "name": "Suporte da API",
             "url": "http://www.swagger.io/support",
-            "email": "support@swagger.io"
+            "email": "rafabene@gmail.com"
         },
         "license": {
             "name": "MIT",
@@ -24,14 +24,14 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/api/v1/auth/last-selected-organization": {
+        "/auth/last-selected-organization": {
             "put": {
                 "security": [
                     {
                         "Bearer": []
                     }
                 ],
-                "description": "Update user's last selected organization preference",
+                "description": "Atualizar preferência da última organização selecionada do usuário",
                 "consumes": [
                     "application/json"
                 ],
@@ -41,100 +41,49 @@ const docTemplate = `{
                 "tags": [
                     "auth"
                 ],
-                "summary": "Update last selected organization",
+                "summary": "Atualizar última organização selecionada",
                 "parameters": [
                     {
-                        "description": "Organization preference data",
+                        "description": "Dados de preferência da organização",
                         "name": "organization",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.UpdateLastSelectedOrganizationRequest"
+                            "$ref": "#/definitions/controllers.UpdateLastSelectedOrganizationRequest"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Última organização selecionada atualizada com sucesso",
                         "schema": {
-                            "$ref": "#/definitions/models.MessageResponse"
+                            "$ref": "#/definitions/controllers.MessageResponse"
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "Requisição inválida",
                         "schema": {
-                            "type": "object",
-                            "properties": {
-                                "detail": {
-                                    "type": "string"
-                                },
-                                "instance": {
-                                    "type": "string"
-                                },
-                                "status": {
-                                    "type": "integer"
-                                },
-                                "title": {
-                                    "type": "string"
-                                },
-                                "type": {
-                                    "type": "string"
-                                }
-                            }
+                            "$ref": "#/definitions/errors.BadRequestProblem"
                         }
                     },
                     "401": {
-                        "description": "Unauthorized",
+                        "description": "Não autorizado",
                         "schema": {
-                            "type": "object",
-                            "properties": {
-                                "detail": {
-                                    "type": "string"
-                                },
-                                "instance": {
-                                    "type": "string"
-                                },
-                                "status": {
-                                    "type": "integer"
-                                },
-                                "title": {
-                                    "type": "string"
-                                },
-                                "type": {
-                                    "type": "string"
-                                }
-                            }
+                            "$ref": "#/definitions/errors.UnauthorizedProblem"
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "Erro interno do servidor",
                         "schema": {
-                            "type": "object",
-                            "properties": {
-                                "detail": {
-                                    "type": "string"
-                                },
-                                "instance": {
-                                    "type": "string"
-                                },
-                                "status": {
-                                    "type": "integer"
-                                },
-                                "title": {
-                                    "type": "string"
-                                },
-                                "type": {
-                                    "type": "string"
-                                }
-                            }
+                            "$ref": "#/definitions/errors.InternalServerProblem"
                         }
                     }
                 }
             }
         },
-        "/api/v1/auth/login": {
+        "/auth/login": {
             "post": {
-                "description": "Authenticate user with email and password",
+                "description": "Autentica usuário com email e senha",
                 "consumes": [
                     "application/json"
                 ],
@@ -144,100 +93,49 @@ const docTemplate = `{
                 "tags": [
                     "auth"
                 ],
-                "summary": "Login user",
+                "summary": "Fazer login do usuário",
                 "parameters": [
                     {
-                        "description": "Login credentials",
+                        "description": "Credenciais de login",
                         "name": "credentials",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.LoginRequest"
+                            "$ref": "#/definitions/controllers.LoginRequest"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Resposta de sucesso com token e informações do usuário",
                         "schema": {
-                            "$ref": "#/definitions/models.LoginResponse"
+                            "$ref": "#/definitions/controllers.LoginResponse"
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "Requisição inválida",
                         "schema": {
-                            "type": "object",
-                            "properties": {
-                                "detail": {
-                                    "type": "string"
-                                },
-                                "instance": {
-                                    "type": "string"
-                                },
-                                "status": {
-                                    "type": "integer"
-                                },
-                                "title": {
-                                    "type": "string"
-                                },
-                                "type": {
-                                    "type": "string"
-                                }
-                            }
+                            "$ref": "#/definitions/errors.BadRequestProblem"
                         }
                     },
                     "401": {
-                        "description": "Unauthorized",
+                        "description": "Não autorizado",
                         "schema": {
-                            "type": "object",
-                            "properties": {
-                                "detail": {
-                                    "type": "string"
-                                },
-                                "instance": {
-                                    "type": "string"
-                                },
-                                "status": {
-                                    "type": "integer"
-                                },
-                                "title": {
-                                    "type": "string"
-                                },
-                                "type": {
-                                    "type": "string"
-                                }
-                            }
+                            "$ref": "#/definitions/errors.UnauthorizedProblem"
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "Erro interno do servidor",
                         "schema": {
-                            "type": "object",
-                            "properties": {
-                                "detail": {
-                                    "type": "string"
-                                },
-                                "instance": {
-                                    "type": "string"
-                                },
-                                "status": {
-                                    "type": "integer"
-                                },
-                                "title": {
-                                    "type": "string"
-                                },
-                                "type": {
-                                    "type": "string"
-                                }
-                            }
+                            "$ref": "#/definitions/errors.InternalServerProblem"
                         }
                     }
                 }
             }
         },
-        "/api/v1/auth/password-reset": {
+        "/auth/password-reset": {
             "post": {
-                "description": "Send password reset email to user",
+                "description": "Enviar email de redefinição de senha para o usuário",
                 "consumes": [
                     "application/json"
                 ],
@@ -247,100 +145,49 @@ const docTemplate = `{
                 "tags": [
                     "auth"
                 ],
-                "summary": "Request password reset",
+                "summary": "Solicitar redefinição de senha",
                 "parameters": [
                     {
-                        "description": "Email for password reset",
+                        "description": "Email para redefinição de senha",
                         "name": "email",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.PasswordResetRequest"
+                            "$ref": "#/definitions/controllers.PasswordResetRequest"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Email de redefinição enviado com sucesso",
                         "schema": {
-                            "$ref": "#/definitions/models.MessageResponse"
+                            "$ref": "#/definitions/controllers.MessageResponse"
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "Requisição inválida",
                         "schema": {
-                            "type": "object",
-                            "properties": {
-                                "detail": {
-                                    "type": "string"
-                                },
-                                "instance": {
-                                    "type": "string"
-                                },
-                                "status": {
-                                    "type": "integer"
-                                },
-                                "title": {
-                                    "type": "string"
-                                },
-                                "type": {
-                                    "type": "string"
-                                }
-                            }
+                            "$ref": "#/definitions/errors.BadRequestProblem"
                         }
                     },
                     "404": {
-                        "description": "Not Found",
+                        "description": "Não encontrado",
                         "schema": {
-                            "type": "object",
-                            "properties": {
-                                "detail": {
-                                    "type": "string"
-                                },
-                                "instance": {
-                                    "type": "string"
-                                },
-                                "status": {
-                                    "type": "integer"
-                                },
-                                "title": {
-                                    "type": "string"
-                                },
-                                "type": {
-                                    "type": "string"
-                                }
-                            }
+                            "$ref": "#/definitions/errors.NotFoundProblem"
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "Erro interno do servidor",
                         "schema": {
-                            "type": "object",
-                            "properties": {
-                                "detail": {
-                                    "type": "string"
-                                },
-                                "instance": {
-                                    "type": "string"
-                                },
-                                "status": {
-                                    "type": "integer"
-                                },
-                                "title": {
-                                    "type": "string"
-                                },
-                                "type": {
-                                    "type": "string"
-                                }
-                            }
+                            "$ref": "#/definitions/errors.InternalServerProblem"
                         }
                     }
                 }
             }
         },
-        "/api/v1/auth/password-reset/confirm": {
+        "/auth/password-reset/confirm": {
             "post": {
-                "description": "Reset user password using reset token",
+                "description": "Redefinir senha do usuário usando token de redefinição",
                 "consumes": [
                     "application/json"
                 ],
@@ -350,100 +197,49 @@ const docTemplate = `{
                 "tags": [
                     "auth"
                 ],
-                "summary": "Reset password",
+                "summary": "Redefinir senha",
                 "parameters": [
                     {
-                        "description": "Password reset data",
+                        "description": "Dados de redefinição de senha",
                         "name": "reset",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.PasswordResetConfirmRequest"
+                            "$ref": "#/definitions/controllers.PasswordResetConfirmRequest"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Senha redefinida com sucesso",
                         "schema": {
-                            "$ref": "#/definitions/models.MessageResponse"
+                            "$ref": "#/definitions/controllers.MessageResponse"
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "Requisição inválida",
                         "schema": {
-                            "type": "object",
-                            "properties": {
-                                "detail": {
-                                    "type": "string"
-                                },
-                                "instance": {
-                                    "type": "string"
-                                },
-                                "status": {
-                                    "type": "integer"
-                                },
-                                "title": {
-                                    "type": "string"
-                                },
-                                "type": {
-                                    "type": "string"
-                                }
-                            }
+                            "$ref": "#/definitions/errors.BadRequestProblem"
                         }
                     },
                     "404": {
-                        "description": "Not Found",
+                        "description": "Não encontrado",
                         "schema": {
-                            "type": "object",
-                            "properties": {
-                                "detail": {
-                                    "type": "string"
-                                },
-                                "instance": {
-                                    "type": "string"
-                                },
-                                "status": {
-                                    "type": "integer"
-                                },
-                                "title": {
-                                    "type": "string"
-                                },
-                                "type": {
-                                    "type": "string"
-                                }
-                            }
+                            "$ref": "#/definitions/errors.NotFoundProblem"
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "Erro interno do servidor",
                         "schema": {
-                            "type": "object",
-                            "properties": {
-                                "detail": {
-                                    "type": "string"
-                                },
-                                "instance": {
-                                    "type": "string"
-                                },
-                                "status": {
-                                    "type": "integer"
-                                },
-                                "title": {
-                                    "type": "string"
-                                },
-                                "type": {
-                                    "type": "string"
-                                }
-                            }
+                            "$ref": "#/definitions/errors.InternalServerProblem"
                         }
                     }
                 }
             }
         },
-        "/api/v1/auth/register": {
+        "/auth/register": {
             "post": {
-                "description": "Create a new user account",
+                "description": "Criar uma nova conta de usuário",
                 "consumes": [
                     "application/json"
                 ],
@@ -453,92 +249,850 @@ const docTemplate = `{
                 "tags": [
                     "auth"
                 ],
-                "summary": "Register new user",
+                "summary": "Registrar novo usuário",
                 "parameters": [
                     {
-                        "description": "Registration data",
+                        "description": "Dados de registro",
                         "name": "user",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.RegisterRequest"
+                            "$ref": "#/definitions/controllers.RegisterRequest"
                         }
                     }
                 ],
                 "responses": {
                     "201": {
-                        "description": "Created",
+                        "description": "Usuário criado com sucesso",
                         "schema": {
-                            "$ref": "#/definitions/models.LoginResponse"
+                            "$ref": "#/definitions/controllers.LoginResponse"
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "Requisição inválida",
                         "schema": {
-                            "type": "object",
-                            "properties": {
-                                "detail": {
-                                    "type": "string"
-                                },
-                                "instance": {
-                                    "type": "string"
-                                },
-                                "status": {
-                                    "type": "integer"
-                                },
-                                "title": {
-                                    "type": "string"
-                                },
-                                "type": {
-                                    "type": "string"
-                                }
-                            }
+                            "$ref": "#/definitions/errors.BadRequestProblem"
                         }
                     },
                     "409": {
-                        "description": "Conflict",
+                        "description": "Conflito",
                         "schema": {
-                            "type": "object",
-                            "properties": {
-                                "detail": {
-                                    "type": "string"
-                                },
-                                "instance": {
-                                    "type": "string"
-                                },
-                                "status": {
-                                    "type": "integer"
-                                },
-                                "title": {
-                                    "type": "string"
-                                },
-                                "type": {
-                                    "type": "string"
-                                }
-                            }
+                            "$ref": "#/definitions/errors.ConflictProblem"
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "Erro interno do servidor",
                         "schema": {
-                            "type": "object",
-                            "properties": {
-                                "detail": {
-                                    "type": "string"
-                                },
-                                "instance": {
-                                    "type": "string"
-                                },
-                                "status": {
-                                    "type": "integer"
-                                },
-                                "title": {
-                                    "type": "string"
-                                },
-                                "type": {
-                                    "type": "string"
-                                }
-                            }
+                            "$ref": "#/definitions/errors.InternalServerProblem"
+                        }
+                    }
+                }
+            }
+        },
+        "/invites": {
+            "get": {
+                "description": "Obter todos os convites pendentes para a organização (somente administradores)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "organizations"
+                ],
+                "summary": "Obter convites da organização",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID da Organização",
+                        "name": "Organization-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "default": 1,
+                        "description": "Número da página",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 50,
+                        "description": "Itens por página",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "default": "\"created_at\"",
+                        "description": "Ordenar por campo",
+                        "name": "sortBy",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "default": "\"desc\"",
+                        "description": "Ordem de classificação (asc/desc)",
+                        "name": "sortOrder",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Lista dos convites da organização",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.OrganizationInviteListResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Requisição inválida",
+                        "schema": {
+                            "$ref": "#/definitions/errors.BadRequestProblem"
+                        }
+                    },
+                    "401": {
+                        "description": "Não autorizado",
+                        "schema": {
+                            "$ref": "#/definitions/errors.UnauthorizedProblem"
+                        }
+                    },
+                    "403": {
+                        "description": "Permissões insuficientes",
+                        "schema": {
+                            "$ref": "#/definitions/errors.ForbiddenProblem"
+                        }
+                    },
+                    "404": {
+                        "description": "Organização não encontrada",
+                        "schema": {
+                            "$ref": "#/definitions/errors.NotFoundProblem"
+                        }
+                    },
+                    "500": {
+                        "description": "Erro interno do servidor",
+                        "schema": {
+                            "$ref": "#/definitions/errors.InternalServerProblem"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Enviar um convite para um usuário ingressar na organização (somente administradores)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "organizations"
+                ],
+                "summary": "Convidar usuário para organização",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID da Organização",
+                        "name": "Organization-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Dados do convite",
+                        "name": "invitation",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.OrganizationInviteRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Convite enviado com sucesso",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.OrganizationInviteResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Requisição inválida",
+                        "schema": {
+                            "$ref": "#/definitions/errors.BadRequestProblem"
+                        }
+                    },
+                    "401": {
+                        "description": "Não autorizado",
+                        "schema": {
+                            "$ref": "#/definitions/errors.UnauthorizedProblem"
+                        }
+                    },
+                    "403": {
+                        "description": "Permissões insuficientes",
+                        "schema": {
+                            "$ref": "#/definitions/errors.ForbiddenProblem"
+                        }
+                    },
+                    "404": {
+                        "description": "Organização não encontrada",
+                        "schema": {
+                            "$ref": "#/definitions/errors.NotFoundProblem"
+                        }
+                    },
+                    "500": {
+                        "description": "Erro interno do servidor",
+                        "schema": {
+                            "$ref": "#/definitions/errors.InternalServerProblem"
+                        }
+                    }
+                }
+            }
+        },
+        "/invites/token/{token}/accept": {
+            "post": {
+                "description": "Aceitar um convite para ingressar em uma organização usando o token de convite",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "organizations"
+                ],
+                "summary": "Aceitar convite da organização",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Token de convite",
+                        "name": "token",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Convite aceito com sucesso",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.OrganizationMemberResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Requisição inválida",
+                        "schema": {
+                            "$ref": "#/definitions/errors.BadRequestProblem"
+                        }
+                    },
+                    "401": {
+                        "description": "Não autorizado",
+                        "schema": {
+                            "$ref": "#/definitions/errors.UnauthorizedProblem"
+                        }
+                    },
+                    "404": {
+                        "description": "Convite não encontrado",
+                        "schema": {
+                            "$ref": "#/definitions/errors.NotFoundProblem"
+                        }
+                    },
+                    "410": {
+                        "description": "Convite expirado ou não válido",
+                        "schema": {
+                            "$ref": "#/definitions/errors.GoneProblem"
+                        }
+                    },
+                    "500": {
+                        "description": "Erro interno do servidor",
+                        "schema": {
+                            "$ref": "#/definitions/errors.InternalServerProblem"
+                        }
+                    }
+                }
+            }
+        },
+        "/invites/token/{token}/validate": {
+            "get": {
+                "description": "Validar um token de convite e verificar se o usuário convidado existe",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "organizations"
+                ],
+                "summary": "Validar convite da organização",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Token de Convite",
+                        "name": "token",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Detalhes do convite válido",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.OrganizationInviteResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Convite não encontrado",
+                        "schema": {
+                            "$ref": "#/definitions/errors.NotFoundProblem"
+                        }
+                    },
+                    "410": {
+                        "description": "Convite expirado ou não válido",
+                        "schema": {
+                            "$ref": "#/definitions/errors.GoneProblem"
+                        }
+                    }
+                }
+            }
+        },
+        "/invites/{inviteId}": {
+            "delete": {
+                "description": "Revogar um convite para ingressar na organização (somente administradores)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "organizations"
+                ],
+                "summary": "Revogar convite da organização",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID do Convite",
+                        "name": "inviteId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Convite revogado com sucesso"
+                    },
+                    "400": {
+                        "description": "Requisição inválida",
+                        "schema": {
+                            "$ref": "#/definitions/errors.BadRequestProblem"
+                        }
+                    },
+                    "401": {
+                        "description": "Não autorizado",
+                        "schema": {
+                            "$ref": "#/definitions/errors.UnauthorizedProblem"
+                        }
+                    },
+                    "403": {
+                        "description": "Permissões insuficientes",
+                        "schema": {
+                            "$ref": "#/definitions/errors.ForbiddenProblem"
+                        }
+                    },
+                    "404": {
+                        "description": "Convite não encontrado",
+                        "schema": {
+                            "$ref": "#/definitions/errors.NotFoundProblem"
+                        }
+                    },
+                    "500": {
+                        "description": "Erro interno do servidor",
+                        "schema": {
+                            "$ref": "#/definitions/errors.InternalServerProblem"
+                        }
+                    }
+                }
+            }
+        },
+        "/invites/{inviteId}/resend": {
+            "post": {
+                "description": "Reenviar um convite com um novo token e expiração estendida (somente administradores)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "organizations"
+                ],
+                "summary": "Reenviar convite da organização",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID do Convite",
+                        "name": "inviteId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Convite reenviado com sucesso",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.OrganizationInviteResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Requisição inválida",
+                        "schema": {
+                            "$ref": "#/definitions/errors.BadRequestProblem"
+                        }
+                    },
+                    "401": {
+                        "description": "Não autorizado",
+                        "schema": {
+                            "$ref": "#/definitions/errors.UnauthorizedProblem"
+                        }
+                    },
+                    "403": {
+                        "description": "Permissões insuficientes",
+                        "schema": {
+                            "$ref": "#/definitions/errors.ForbiddenProblem"
+                        }
+                    },
+                    "404": {
+                        "description": "Convite não encontrado",
+                        "schema": {
+                            "$ref": "#/definitions/errors.NotFoundProblem"
+                        }
+                    },
+                    "500": {
+                        "description": "Erro interno do servidor",
+                        "schema": {
+                            "$ref": "#/definitions/errors.InternalServerProblem"
+                        }
+                    }
+                }
+            }
+        },
+        "/members": {
+            "get": {
+                "description": "Obter todos os membros de uma organização",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "organizations"
+                ],
+                "summary": "Obter membros da organização",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID da Organização",
+                        "name": "Organization-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "default": 1,
+                        "description": "Número da página",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 50,
+                        "description": "Itens por página",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "default": "\"joined_at\"",
+                        "description": "Ordenar por campo",
+                        "name": "sortBy",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "default": "\"desc\"",
+                        "description": "Ordem de classificação (asc/desc)",
+                        "name": "sortOrder",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Lista dos membros da organização",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.OrganizationMemberListResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Requisição inválida",
+                        "schema": {
+                            "$ref": "#/definitions/errors.BadRequestProblem"
+                        }
+                    },
+                    "401": {
+                        "description": "Não autorizado",
+                        "schema": {
+                            "$ref": "#/definitions/errors.UnauthorizedProblem"
+                        }
+                    },
+                    "403": {
+                        "description": "Permissões insuficientes",
+                        "schema": {
+                            "$ref": "#/definitions/errors.ForbiddenProblem"
+                        }
+                    },
+                    "404": {
+                        "description": "Organização não encontrada",
+                        "schema": {
+                            "$ref": "#/definitions/errors.NotFoundProblem"
+                        }
+                    },
+                    "500": {
+                        "description": "Erro interno do servidor",
+                        "schema": {
+                            "$ref": "#/definitions/errors.InternalServerProblem"
+                        }
+                    }
+                }
+            }
+        },
+        "/members/{userId}": {
+            "put": {
+                "description": "Atualizar a função de um membro na organização (somente administradores)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "organizations"
+                ],
+                "summary": "Atualizar função do membro",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID da Organização",
+                        "name": "Organization-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID do Usuário",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Dados de atualização de função",
+                        "name": "member",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.OrganizationMemberUpdateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Função do membro atualizada com sucesso",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.OrganizationMemberResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Requisição inválida",
+                        "schema": {
+                            "$ref": "#/definitions/errors.BadRequestProblem"
+                        }
+                    },
+                    "401": {
+                        "description": "Não autorizado",
+                        "schema": {
+                            "$ref": "#/definitions/errors.UnauthorizedProblem"
+                        }
+                    },
+                    "403": {
+                        "description": "Permissões insuficientes",
+                        "schema": {
+                            "$ref": "#/definitions/errors.ForbiddenProblem"
+                        }
+                    },
+                    "404": {
+                        "description": "Membro ou organização não encontrada",
+                        "schema": {
+                            "$ref": "#/definitions/errors.NotFoundProblem"
+                        }
+                    },
+                    "500": {
+                        "description": "Erro interno do servidor",
+                        "schema": {
+                            "$ref": "#/definitions/errors.InternalServerProblem"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Remover um membro da organização",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "organizations"
+                ],
+                "summary": "Remover membro",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID da Organização",
+                        "name": "Organization-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID do Usuário",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Membro removido com sucesso"
+                    },
+                    "400": {
+                        "description": "Requisição inválida",
+                        "schema": {
+                            "$ref": "#/definitions/errors.BadRequestProblem"
+                        }
+                    },
+                    "401": {
+                        "description": "Não autorizado",
+                        "schema": {
+                            "$ref": "#/definitions/errors.UnauthorizedProblem"
+                        }
+                    },
+                    "403": {
+                        "description": "Permissões insuficientes",
+                        "schema": {
+                            "$ref": "#/definitions/errors.ForbiddenProblem"
+                        }
+                    },
+                    "404": {
+                        "description": "Membro ou organização não encontrada",
+                        "schema": {
+                            "$ref": "#/definitions/errors.NotFoundProblem"
+                        }
+                    },
+                    "500": {
+                        "description": "Erro interno do servidor",
+                        "schema": {
+                            "$ref": "#/definitions/errors.InternalServerProblem"
+                        }
+                    }
+                }
+            }
+        },
+        "/memberships": {
+            "get": {
+                "description": "Obter todas as organizações das quais o usuário autenticado é membro",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "organizations"
+                ],
+                "summary": "Obter filiações do usuário",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 1,
+                        "description": "Número da página",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 50,
+                        "description": "Itens por página",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "default": "\"joined_at\"",
+                        "description": "Ordenar por campo",
+                        "name": "sortBy",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "default": "\"desc\"",
+                        "description": "Ordem de classificação (asc/desc)",
+                        "name": "sortOrder",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Lista das filiações do usuário",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.OrganizationMemberListResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Requisição inválida",
+                        "schema": {
+                            "$ref": "#/definitions/errors.BadRequestProblem"
+                        }
+                    },
+                    "401": {
+                        "description": "Não autorizado",
+                        "schema": {
+                            "$ref": "#/definitions/errors.UnauthorizedProblem"
+                        }
+                    },
+                    "500": {
+                        "description": "Erro interno do servidor",
+                        "schema": {
+                            "$ref": "#/definitions/errors.InternalServerProblem"
+                        }
+                    }
+                }
+            }
+        },
+        "/notification-preferences": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Recuperar preferências de notificação para uma organização. Cria padrões se nenhum existir.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "notification-preferences"
+                ],
+                "summary": "Obter preferências de notificação da organização",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID da Organização",
+                        "name": "Organization-ID",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Resposta de sucesso com preferências",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.NotificationPreferenceListResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Não autorizado",
+                        "schema": {
+                            "$ref": "#/definitions/errors.UnauthorizedProblem"
+                        }
+                    },
+                    "404": {
+                        "description": "Organização não encontrada",
+                        "schema": {
+                            "$ref": "#/definitions/errors.NotFoundProblem"
+                        }
+                    },
+                    "500": {
+                        "description": "Erro interno do servidor",
+                        "schema": {
+                            "$ref": "#/definitions/errors.InternalServerProblem"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Atualização em lote das preferências de notificação para uma organização",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "notification-preferences"
+                ],
+                "summary": "Atualizar preferências de notificação da organização",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID da Organização",
+                        "name": "Organization-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Solicitação de atualização em lote",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.NotificationPreferenceBulkUpdateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Resposta de sucesso com preferências atualizadas",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.NotificationPreferenceListResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Requisição inválida",
+                        "schema": {
+                            "$ref": "#/definitions/errors.BadRequestProblem"
+                        }
+                    },
+                    "401": {
+                        "description": "Não autorizado",
+                        "schema": {
+                            "$ref": "#/definitions/errors.UnauthorizedProblem"
+                        }
+                    },
+                    "404": {
+                        "description": "Organização não encontrada",
+                        "schema": {
+                            "$ref": "#/definitions/errors.NotFoundProblem"
+                        }
+                    },
+                    "500": {
+                        "description": "Erro interno do servidor",
+                        "schema": {
+                            "$ref": "#/definitions/errors.InternalServerProblem"
                         }
                     }
                 }
@@ -551,7 +1105,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Retrieve all available notification event types with descriptions",
+                "description": "Recuperar todos os tipos de evento de notificação disponíveis com descrições",
                 "consumes": [
                     "application/json"
                 ],
@@ -561,20 +1115,73 @@ const docTemplate = `{
                 "tags": [
                     "notification-preferences"
                 ],
-                "summary": "Get available notification events",
+                "summary": "Obter eventos de notificação disponíveis",
                 "responses": {
                     "200": {
-                        "description": "Success response with available events",
+                        "description": "Resposta de sucesso com eventos disponíveis",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/controllers.NotificationEventsResponse"
                         }
                     },
                     "401": {
-                        "description": "Unauthorized",
+                        "description": "Não autorizado",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/errors.UnauthorizedProblem"
+                        }
+                    }
+                }
+            }
+        },
+        "/notification-preferences/reset": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Redefinir todas as preferências de notificação para uma organização para valores padrão",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "notification-preferences"
+                ],
+                "summary": "Redefinir preferências para padrões",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID da Organização",
+                        "name": "Organization-ID",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Resposta de sucesso com preferências padrão",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.NotificationPreferenceListResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Não autorizado",
+                        "schema": {
+                            "$ref": "#/definitions/errors.UnauthorizedProblem"
+                        }
+                    },
+                    "404": {
+                        "description": "Organização não encontrada",
+                        "schema": {
+                            "$ref": "#/definitions/errors.NotFoundProblem"
+                        }
+                    },
+                    "500": {
+                        "description": "Erro interno do servidor",
+                        "schema": {
+                            "$ref": "#/definitions/errors.InternalServerProblem"
                         }
                     }
                 }
@@ -587,7 +1194,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Generate a test notification for the authenticated user to verify settings",
+                "description": "Gerar uma notificação de teste para o usuário autenticado verificar as configurações",
                 "consumes": [
                     "application/json"
                 ],
@@ -597,45 +1204,541 @@ const docTemplate = `{
                 "tags": [
                     "notification-preferences"
                 ],
-                "summary": "Generate test notification",
+                "summary": "Gerar notificação de teste",
                 "parameters": [
                     {
-                        "description": "Test notification request",
+                        "type": "string",
+                        "description": "ID da Organização",
+                        "name": "Organization-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Solicitação de notificação de teste",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.TestNotificationRequest"
+                            "$ref": "#/definitions/controllers.TestNotificationRequest"
                         }
                     }
                 ],
                 "responses": {
                     "201": {
-                        "description": "Success response with test notification",
+                        "description": "Resposta de sucesso com notificação de teste",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/controllers.TestNotificationResponse"
                         }
                     },
                     "400": {
-                        "description": "Bad request",
+                        "description": "Requisição inválida",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/errors.BadRequestProblem"
                         }
                     },
                     "401": {
-                        "description": "Unauthorized",
+                        "description": "Não autorizado",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/errors.UnauthorizedProblem"
                         }
                     },
                     "500": {
-                        "description": "Internal server error",
+                        "description": "Erro interno do servidor",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/errors.InternalServerProblem"
+                        }
+                    }
+                }
+            }
+        },
+        "/notification-preferences/{event}": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Atualizar uma preferência de notificação específica para uma organização",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "notification-preferences"
+                ],
+                "summary": "Atualizar preferência de notificação única",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID da Organização",
+                        "name": "Organization-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Tipo de evento de notificação",
+                        "name": "event",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Solicitação de atualização",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.NotificationPreferenceUpdateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Resposta de sucesso com preferência atualizada",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.NotificationPreferenceResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Requisição inválida",
+                        "schema": {
+                            "$ref": "#/definitions/errors.BadRequestProblem"
+                        }
+                    },
+                    "401": {
+                        "description": "Não autorizado",
+                        "schema": {
+                            "$ref": "#/definitions/errors.UnauthorizedProblem"
+                        }
+                    },
+                    "404": {
+                        "description": "Organização não encontrada",
+                        "schema": {
+                            "$ref": "#/definitions/errors.NotFoundProblem"
+                        }
+                    },
+                    "500": {
+                        "description": "Erro interno do servidor",
+                        "schema": {
+                            "$ref": "#/definitions/errors.InternalServerProblem"
+                        }
+                    }
+                }
+            }
+        },
+        "/notifications": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Recuperar lista paginada de notificações para o usuário autenticado",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "notifications"
+                ],
+                "summary": "Obter notificações do usuário",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID da Organização",
+                        "name": "Organization-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "default": 1,
+                        "description": "Número da página (padrão: 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Número de itens por página (padrão: 10, máx: 100)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "default": "created_at",
+                        "description": "Ordenar por campo (title, type, read, created_at, updated_at)",
+                        "name": "sortBy",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "default": "desc",
+                        "description": "Ordem de classificação (asc, desc)",
+                        "name": "sortOrder",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Resposta de sucesso com notificações e paginação",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.NotificationListResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Requisição inválida",
+                        "schema": {
+                            "$ref": "#/definitions/errors.BadRequestProblem"
+                        }
+                    },
+                    "401": {
+                        "description": "Não autorizado",
+                        "schema": {
+                            "$ref": "#/definitions/errors.UnauthorizedProblem"
+                        }
+                    },
+                    "500": {
+                        "description": "Erro interno do servidor",
+                        "schema": {
+                            "$ref": "#/definitions/errors.InternalServerProblem"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Excluir todas as notificações para o usuário autenticado",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "notifications"
+                ],
+                "summary": "Excluir todas as notificações",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID da Organização",
+                        "name": "Organization-ID",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Mensagem de sucesso",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.MessageResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Não autorizado",
+                        "schema": {
+                            "$ref": "#/definitions/errors.UnauthorizedProblem"
+                        }
+                    },
+                    "500": {
+                        "description": "Erro interno do servidor",
+                        "schema": {
+                            "$ref": "#/definitions/errors.InternalServerProblem"
+                        }
+                    }
+                }
+            }
+        },
+        "/notifications/mark-all-read": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Marcar todas as notificações como lidas para o usuário autenticado",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "notifications"
+                ],
+                "summary": "Marcar todas as notificações como lidas",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID da Organização",
+                        "name": "Organization-ID",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Mensagem de sucesso",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.MessageResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Não autorizado",
+                        "schema": {
+                            "$ref": "#/definitions/errors.UnauthorizedProblem"
+                        }
+                    },
+                    "500": {
+                        "description": "Erro interno do servidor",
+                        "schema": {
+                            "$ref": "#/definitions/errors.InternalServerProblem"
+                        }
+                    }
+                }
+            }
+        },
+        "/notifications/unread": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Recuperar todas as notificações não lidas para o usuário autenticado",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "notifications"
+                ],
+                "summary": "Obter notificações não lidas",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID da Organização",
+                        "name": "Organization-ID",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Resposta de sucesso com notificações não lidas",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/controllers.NotificationResponse"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Não autorizado",
+                        "schema": {
+                            "$ref": "#/definitions/errors.UnauthorizedProblem"
+                        }
+                    },
+                    "500": {
+                        "description": "Erro interno do servidor",
+                        "schema": {
+                            "$ref": "#/definitions/errors.InternalServerProblem"
+                        }
+                    }
+                }
+            }
+        },
+        "/notifications/unread-count": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Recuperar a contagem de notificações não lidas para o usuário autenticado",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "notifications"
+                ],
+                "summary": "Obter contagem de notificações não lidas",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID da Organização",
+                        "name": "Organization-ID",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Resposta de sucesso com contagem não lida",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.UnreadCountResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Não autorizado",
+                        "schema": {
+                            "$ref": "#/definitions/errors.UnauthorizedProblem"
+                        }
+                    },
+                    "500": {
+                        "description": "Erro interno do servidor",
+                        "schema": {
+                            "$ref": "#/definitions/errors.InternalServerProblem"
+                        }
+                    }
+                }
+            }
+        },
+        "/notifications/{notifId}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Excluir uma notificação específica para o usuário autenticado",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "notifications"
+                ],
+                "summary": "Excluir notificação",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID da Organização",
+                        "name": "Organization-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID da Notificação",
+                        "name": "notifId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Mensagem de sucesso",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Requisição inválida",
+                        "schema": {
+                            "$ref": "#/definitions/errors.BadRequestProblem"
+                        }
+                    },
+                    "401": {
+                        "description": "Não autorizado",
+                        "schema": {
+                            "$ref": "#/definitions/errors.UnauthorizedProblem"
+                        }
+                    },
+                    "404": {
+                        "description": "Notificação não encontrada",
+                        "schema": {
+                            "$ref": "#/definitions/errors.NotFoundProblem"
+                        }
+                    },
+                    "500": {
+                        "description": "Erro interno do servidor",
+                        "schema": {
+                            "$ref": "#/definitions/errors.InternalServerProblem"
+                        }
+                    }
+                }
+            }
+        },
+        "/notifications/{notifId}/read": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Marcar uma notificação específica como lida para o usuário autenticado",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "notifications"
+                ],
+                "summary": "Marcar notificação como lida",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID da Organização",
+                        "name": "Organization-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID da Notificação",
+                        "name": "notifId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Mensagem de sucesso",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Requisição inválida",
+                        "schema": {
+                            "$ref": "#/definitions/errors.BadRequestProblem"
+                        }
+                    },
+                    "401": {
+                        "description": "Não autorizado",
+                        "schema": {
+                            "$ref": "#/definitions/errors.UnauthorizedProblem"
+                        }
+                    },
+                    "404": {
+                        "description": "Notificação não encontrada",
+                        "schema": {
+                            "$ref": "#/definitions/errors.NotFoundProblem"
+                        }
+                    },
+                    "500": {
+                        "description": "Erro interno do servidor",
+                        "schema": {
+                            "$ref": "#/definitions/errors.InternalServerProblem"
                         }
                     }
                 }
@@ -643,7 +1746,7 @@ const docTemplate = `{
         },
         "/organizations": {
             "get": {
-                "description": "Get a specific organization by its ID",
+                "description": "Obter uma organização específica por seu ID",
                 "consumes": [
                     "application/json"
                 ],
@@ -653,11 +1756,11 @@ const docTemplate = `{
                 "tags": [
                     "organizations"
                 ],
-                "summary": "Get organization by ID",
+                "summary": "Obter organização por ID",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Organization ID",
+                        "description": "ID da Organização",
                         "name": "Organization-ID",
                         "in": "header",
                         "required": true
@@ -665,33 +1768,33 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Informações da organização",
                         "schema": {
-                            "$ref": "#/definitions/models.OrganizationResponse"
+                            "$ref": "#/definitions/controllers.OrganizationResponse"
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "Requisição inválida",
                         "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
+                            "$ref": "#/definitions/errors.BadRequestProblem"
                         }
                     },
                     "404": {
-                        "description": "Not Found",
+                        "description": "Organização não encontrada",
                         "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
+                            "$ref": "#/definitions/errors.NotFoundProblem"
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "Erro interno do servidor",
                         "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
+                            "$ref": "#/definitions/errors.InternalServerProblem"
                         }
                     }
                 }
             },
             "put": {
-                "description": "Update an organization (admin only)",
+                "description": "Atualizar uma organização (somente administradores)",
                 "consumes": [
                     "application/json"
                 ],
@@ -701,66 +1804,66 @@ const docTemplate = `{
                 "tags": [
                     "organizations"
                 ],
-                "summary": "Update organization",
+                "summary": "Atualizar organização",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Organization ID",
+                        "description": "ID da Organização",
                         "name": "Organization-ID",
                         "in": "header",
                         "required": true
                     },
                     {
-                        "description": "Update data",
+                        "description": "Dados de atualização",
                         "name": "organization",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.OrganizationUpdateRequest"
+                            "$ref": "#/definitions/controllers.OrganizationUpdateRequest"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Organização atualizada com sucesso",
                         "schema": {
-                            "$ref": "#/definitions/models.OrganizationResponse"
+                            "$ref": "#/definitions/controllers.OrganizationResponse"
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "Requisição inválida",
                         "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
+                            "$ref": "#/definitions/errors.BadRequestProblem"
                         }
                     },
                     "401": {
-                        "description": "Unauthorized",
+                        "description": "Não autorizado",
                         "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
+                            "$ref": "#/definitions/errors.UnauthorizedProblem"
                         }
                     },
                     "403": {
-                        "description": "Forbidden",
+                        "description": "Permissões insuficientes",
                         "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
+                            "$ref": "#/definitions/errors.ForbiddenProblem"
                         }
                     },
                     "404": {
-                        "description": "Not Found",
+                        "description": "Organização não encontrada",
                         "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
+                            "$ref": "#/definitions/errors.NotFoundProblem"
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "Erro interno do servidor",
                         "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
+                            "$ref": "#/definitions/errors.InternalServerProblem"
                         }
                     }
                 }
             },
             "post": {
-                "description": "Create a new organization with the authenticated user as admin",
+                "description": "Criar uma nova organização com o usuário autenticado como administrador",
                 "consumes": [
                     "application/json"
                 ],
@@ -770,47 +1873,47 @@ const docTemplate = `{
                 "tags": [
                     "organizations"
                 ],
-                "summary": "Create a new organization",
+                "summary": "Criar uma nova organização",
                 "parameters": [
                     {
-                        "description": "Organization data",
+                        "description": "Dados da organização",
                         "name": "organization",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.OrganizationCreateRequest"
+                            "$ref": "#/definitions/controllers.OrganizationCreateRequest"
                         }
                     }
                 ],
                 "responses": {
                     "201": {
-                        "description": "Created",
+                        "description": "Organização criada com sucesso",
                         "schema": {
-                            "$ref": "#/definitions/models.OrganizationResponse"
+                            "$ref": "#/definitions/controllers.OrganizationResponse"
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "Requisição inválida",
                         "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
+                            "$ref": "#/definitions/errors.BadRequestProblem"
                         }
                     },
                     "401": {
-                        "description": "Unauthorized",
+                        "description": "Não autorizado",
                         "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
+                            "$ref": "#/definitions/errors.UnauthorizedProblem"
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "Erro interno do servidor",
                         "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
+                            "$ref": "#/definitions/errors.InternalServerProblem"
                         }
                     }
                 }
             },
             "delete": {
-                "description": "Delete an organization (creator only)",
+                "description": "Excluir uma organização (somente criador)",
                 "consumes": [
                     "application/json"
                 ],
@@ -820,11 +1923,11 @@ const docTemplate = `{
                 "tags": [
                     "organizations"
                 ],
-                "summary": "Delete organization",
+                "summary": "Excluir organização",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Organization ID",
+                        "description": "ID da Organização",
                         "name": "Organization-ID",
                         "in": "header",
                         "required": true
@@ -832,723 +1935,36 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "204": {
-                        "description": "No Content"
+                        "description": "Organização excluída com sucesso"
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "Requisição inválida",
                         "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
+                            "$ref": "#/definitions/errors.BadRequestProblem"
                         }
                     },
                     "401": {
-                        "description": "Unauthorized",
+                        "description": "Não autorizado",
                         "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
+                            "$ref": "#/definitions/errors.UnauthorizedProblem"
                         }
                     },
                     "403": {
-                        "description": "Forbidden",
+                        "description": "Permissões insuficientes",
                         "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
+                            "$ref": "#/definitions/errors.ForbiddenProblem"
                         }
                     },
                     "404": {
-                        "description": "Not Found",
+                        "description": "Organização não encontrada",
                         "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
+                            "$ref": "#/definitions/errors.NotFoundProblem"
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "Erro interno do servidor",
                         "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
-                        }
-                    }
-                }
-            }
-        },
-        "/organizations/invites": {
-            "get": {
-                "description": "Get all pending invitations for the organization (admin only)",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "organizations"
-                ],
-                "summary": "Get organization invitations",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Organization ID",
-                        "name": "Organization-ID",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "default": 1,
-                        "description": "Page number",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "default": 50,
-                        "description": "Items per page",
-                        "name": "limit",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "default": "\"created_at\"",
-                        "description": "Sort by field",
-                        "name": "sortBy",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "default": "\"desc\"",
-                        "description": "Sort order (asc/desc)",
-                        "name": "sortOrder",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/models.OrganizationInviteListResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "description": "Send an invitation to a user to join the organization (admin only)",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "organizations"
-                ],
-                "summary": "Invite user to organization",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Organization ID",
-                        "name": "Organization-ID",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "description": "Invitation data",
-                        "name": "invitation",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/models.OrganizationInviteRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/models.OrganizationInviteResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
-                        }
-                    }
-                }
-            }
-        },
-        "/organizations/invites/token/{token}/validate": {
-            "get": {
-                "description": "Validate an invitation token and check if the invited user exists",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "organizations"
-                ],
-                "summary": "Validate organization invitation",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Invitation Token",
-                        "name": "token",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
-                        }
-                    },
-                    "410": {
-                        "description": "Gone",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
-                        }
-                    }
-                }
-            }
-        },
-        "/organizations/invites/{inviteId}": {
-            "delete": {
-                "description": "Revoke an invitation to join the organization (admin only)",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "organizations"
-                ],
-                "summary": "Revoke organization invitation",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Invitation ID",
-                        "name": "inviteId",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
-                        }
-                    }
-                }
-            }
-        },
-        "/organizations/invites/{inviteId}/resend": {
-            "post": {
-                "description": "Resend an invitation with a new token and extended expiry (admin only)",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "organizations"
-                ],
-                "summary": "Resend organization invitation",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Invitation ID",
-                        "name": "inviteId",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/models.OrganizationInviteResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
-                        }
-                    }
-                }
-            }
-        },
-        "/organizations/invites/{token}/accept": {
-            "post": {
-                "description": "Accept an invitation to join an organization using the invitation token",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "organizations"
-                ],
-                "summary": "Accept organization invitation",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Invitation token",
-                        "name": "token",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/models.OrganizationMemberResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
-                        }
-                    },
-                    "410": {
-                        "description": "Gone",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
-                        }
-                    }
-                }
-            }
-        },
-        "/organizations/members": {
-            "get": {
-                "description": "Get all members of an organization",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "organizations"
-                ],
-                "summary": "Get organization members",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Organization ID",
-                        "name": "Organization-ID",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "default": 1,
-                        "description": "Page number",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "default": 50,
-                        "description": "Items per page",
-                        "name": "limit",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "default": "\"joined_at\"",
-                        "description": "Sort by field",
-                        "name": "sortBy",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "default": "\"desc\"",
-                        "description": "Sort order (asc/desc)",
-                        "name": "sortOrder",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/models.OrganizationMemberListResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
-                        }
-                    }
-                }
-            }
-        },
-        "/organizations/members/{userId}": {
-            "put": {
-                "description": "Update a member's role in the organization (admin only)",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "organizations"
-                ],
-                "summary": "Update member role",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Organization ID",
-                        "name": "Organization-ID",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "User ID",
-                        "name": "userId",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Role update data",
-                        "name": "member",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/models.OrganizationMemberUpdateRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/models.OrganizationMemberResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "description": "Remove a member from the organization",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "organizations"
-                ],
-                "summary": "Remove member",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Organization ID",
-                        "name": "Organization-ID",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "User ID",
-                        "name": "userId",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
-                        }
-                    }
-                }
-            }
-        },
-        "/organizations/memberships": {
-            "get": {
-                "description": "Get all organizations the authenticated user is a member of",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "organizations"
-                ],
-                "summary": "Get user memberships",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "default": 1,
-                        "description": "Page number",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "default": 50,
-                        "description": "Items per page",
-                        "name": "limit",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "default": "\"joined_at\"",
-                        "description": "Sort by field",
-                        "name": "sortBy",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "default": "\"desc\"",
-                        "description": "Sort order (asc/desc)",
-                        "name": "sortOrder",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/models.OrganizationMemberListResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
+                            "$ref": "#/definitions/errors.InternalServerProblem"
                         }
                     }
                 }
@@ -1556,7 +1972,7 @@ const docTemplate = `{
         },
         "/organizations/my": {
             "get": {
-                "description": "Get all organizations created by the authenticated user",
+                "description": "Obter todas as organizações criadas pelo usuário autenticado",
                 "consumes": [
                     "application/json"
                 ],
@@ -1566,768 +1982,60 @@ const docTemplate = `{
                 "tags": [
                     "organizations"
                 ],
-                "summary": "Get user's organizations",
+                "summary": "Obter organizações do usuário",
                 "parameters": [
                     {
                         "type": "integer",
                         "default": 1,
-                        "description": "Page number",
+                        "description": "Número da página",
                         "name": "page",
                         "in": "query"
                     },
                     {
                         "type": "integer",
                         "default": 50,
-                        "description": "Items per page",
+                        "description": "Itens por página",
                         "name": "limit",
                         "in": "query"
                     },
                     {
                         "type": "string",
                         "default": "\"created_at\"",
-                        "description": "Sort by field",
+                        "description": "Ordenar por campo",
                         "name": "sortBy",
                         "in": "query"
                     },
                     {
                         "type": "string",
                         "default": "\"desc\"",
-                        "description": "Sort order (asc/desc)",
+                        "description": "Ordem de classificação (asc/desc)",
                         "name": "sortOrder",
                         "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Lista das organizações do usuário",
                         "schema": {
-                            "$ref": "#/definitions/models.OrganizationListResponse"
+                            "$ref": "#/definitions/controllers.OrganizationListResponse"
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "Requisição inválida",
                         "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
+                            "$ref": "#/definitions/errors.BadRequestProblem"
                         }
                     },
                     "401": {
-                        "description": "Unauthorized",
+                        "description": "Não autorizado",
                         "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
+                            "$ref": "#/definitions/errors.UnauthorizedProblem"
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "Erro interno do servidor",
                         "schema": {
-                            "$ref": "#/definitions/errors.ProblemDetail"
-                        }
-                    }
-                }
-            }
-        },
-        "/organizations/notification-preferences": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Retrieve notification preferences for an organization. Creates defaults if none exist.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "notification-preferences"
-                ],
-                "summary": "Get organization notification preferences",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Organization ID",
-                        "name": "Organization-ID",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Success response with preferences",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "404": {
-                        "description": "Organization not found",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            },
-            "put": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Bulk update notification preferences for an organization",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "notification-preferences"
-                ],
-                "summary": "Update organization notification preferences",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Organization ID",
-                        "name": "Organization-ID",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "description": "Bulk update request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/models.NotificationPreferenceBulkUpdateRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Success response with updated preferences",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Bad request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "404": {
-                        "description": "Organization not found",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/organizations/notification-preferences/reset": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Reset all notification preferences for an organization to default values",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "notification-preferences"
-                ],
-                "summary": "Reset preferences to defaults",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Organization ID",
-                        "name": "Organization-ID",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Success response with default preferences",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "404": {
-                        "description": "Organization not found",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/organizations/notification-preferences/{event}": {
-            "put": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Update a specific notification preference for an organization",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "notification-preferences"
-                ],
-                "summary": "Update single notification preference",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Organization ID",
-                        "name": "Organization-ID",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Notification event type",
-                        "name": "event",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Update request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/models.NotificationPreferenceUpdateRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Success response with updated preference",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Bad request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "404": {
-                        "description": "Organization not found",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/organizations/notifications": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Retrieve paginated list of notifications for the authenticated user",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "notifications"
-                ],
-                "summary": "Get user notifications",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Organization ID",
-                        "name": "Organization-ID",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "default": 1,
-                        "description": "Page number (default: 1)",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "default": 10,
-                        "description": "Number of items per page (default: 10, max: 100)",
-                        "name": "limit",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "default": "created_at",
-                        "description": "Sort by field (title, type, read, created_at, updated_at)",
-                        "name": "sortBy",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "default": "desc",
-                        "description": "Sort order (asc, desc)",
-                        "name": "sortOrder",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Success response with notifications and pagination",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Bad request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Delete all notifications for the authenticated user",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "notifications"
-                ],
-                "summary": "Delete all notifications",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Organization ID",
-                        "name": "Organization-ID",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Success message",
-                        "schema": {
-                            "$ref": "#/definitions/models.MessageResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/organizations/notifications/mark-all-read": {
-            "put": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Mark all notifications as read for the authenticated user",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "notifications"
-                ],
-                "summary": "Mark all notifications as read",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Organization ID",
-                        "name": "Organization-ID",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Success message",
-                        "schema": {
-                            "$ref": "#/definitions/models.MessageResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/organizations/notifications/unread": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Retrieve all unread notifications for the authenticated user",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "notifications"
-                ],
-                "summary": "Get unread notifications",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Organization ID",
-                        "name": "Organization-ID",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Success response with unread notifications",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/organizations/notifications/unread-count": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Retrieve the count of unread notifications for the authenticated user",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "notifications"
-                ],
-                "summary": "Get unread notifications count",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Organization ID",
-                        "name": "Organization-ID",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Success response with unread count",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/organizations/notifications/{notifId}": {
-            "delete": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Delete a specific notification for the authenticated user",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "notifications"
-                ],
-                "summary": "Delete notification",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Organization ID",
-                        "name": "Organization-ID",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Notification ID",
-                        "name": "notifId",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Success message",
-                        "schema": {
-                            "$ref": "#/definitions/models.MessageResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "404": {
-                        "description": "Notification not found",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/organizations/notifications/{notifId}/read": {
-            "put": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Mark a specific notification as read for the authenticated user",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "notifications"
-                ],
-                "summary": "Mark notification as read",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Organization ID",
-                        "name": "Organization-ID",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Notification ID",
-                        "name": "notifId",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Success message",
-                        "schema": {
-                            "$ref": "#/definitions/models.MessageResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "404": {
-                        "description": "Notification not found",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/errors.InternalServerProblem"
                         }
                     }
                 }
@@ -2335,33 +2043,7 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "errors.ProblemDetail": {
-            "description": "Error response following RFC 7807 Problem Details for HTTP APIs",
-            "type": "object",
-            "properties": {
-                "detail": {
-                    "type": "string",
-                    "example": "Invalid input data"
-                },
-                "instance": {
-                    "type": "string",
-                    "example": "/api/v1/users"
-                },
-                "status": {
-                    "type": "integer",
-                    "example": 400
-                },
-                "title": {
-                    "type": "string",
-                    "example": "Validation Error"
-                },
-                "type": {
-                    "type": "string",
-                    "example": "https://avantpro-backend.com/errors/validation"
-                }
-            }
-        },
-        "models.InviteStatus": {
+        "controllers.InviteStatus": {
             "type": "string",
             "enum": [
                 "pending",
@@ -2376,8 +2058,8 @@ const docTemplate = `{
                 "InviteStatusRevoked"
             ]
         },
-        "models.LoginRequest": {
-            "description": "User login request",
+        "controllers.LoginRequest": {
+            "description": "Requisição de login do usuário",
             "type": "object",
             "required": [
                 "email",
@@ -2394,8 +2076,8 @@ const docTemplate = `{
                 }
             }
         },
-        "models.LoginResponse": {
-            "description": "Login response with token and user info",
+        "controllers.LoginResponse": {
+            "description": "Resposta de login com token e informações do usuário",
             "type": "object",
             "properties": {
                 "token": {
@@ -2403,12 +2085,12 @@ const docTemplate = `{
                     "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
                 },
                 "user": {
-                    "$ref": "#/definitions/models.UserResponse"
+                    "$ref": "#/definitions/controllers.UserResponse"
                 }
             }
         },
-        "models.MessageResponse": {
-            "description": "Simple message response",
+        "controllers.MessageResponse": {
+            "description": "Resposta de mensagem simples",
             "type": "object",
             "properties": {
                 "message": {
@@ -2417,7 +2099,7 @@ const docTemplate = `{
                 }
             }
         },
-        "models.NotificationEvent": {
+        "controllers.NotificationEvent": {
             "type": "string",
             "enum": [
                 "member_joined",
@@ -2438,8 +2120,47 @@ const docTemplate = `{
                 "NotificationEventOrganizationUpdate"
             ]
         },
-        "models.NotificationPreferenceBulkItem": {
-            "description": "Single notification preference item for bulk update",
+        "controllers.NotificationEventsResponse": {
+            "description": "Resposta dos eventos de notificação disponíveis",
+            "type": "object",
+            "properties": {
+                "events": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/controllers.NotificationEvent"
+                    }
+                }
+            }
+        },
+        "controllers.NotificationListResponse": {
+            "description": "Resposta da lista de notificações com paginação",
+            "type": "object",
+            "properties": {
+                "limit": {
+                    "type": "integer",
+                    "example": 10
+                },
+                "notifications": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/controllers.NotificationResponse"
+                    }
+                },
+                "page": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "total": {
+                    "type": "integer",
+                    "example": 25
+                },
+                "total_pages": {
+                    "type": "integer",
+                    "example": 3
+                }
+            }
+        },
+        "controllers.NotificationPreferenceBulkItem": {
             "type": "object",
             "required": [
                 "event"
@@ -2452,15 +2173,15 @@ const docTemplate = `{
                 "event": {
                     "allOf": [
                         {
-                            "$ref": "#/definitions/models.NotificationEvent"
+                            "$ref": "#/definitions/controllers.NotificationEvent"
                         }
                     ],
                     "example": "member_joined"
                 }
             }
         },
-        "models.NotificationPreferenceBulkUpdateRequest": {
-            "description": "Bulk update notification preferences request",
+        "controllers.NotificationPreferenceBulkUpdateRequest": {
+            "description": "Requisição de atualização em lote de preferências de notificação",
             "type": "object",
             "required": [
                 "preferences"
@@ -2470,13 +2191,55 @@ const docTemplate = `{
                     "type": "array",
                     "minItems": 1,
                     "items": {
-                        "$ref": "#/definitions/models.NotificationPreferenceBulkItem"
+                        "$ref": "#/definitions/controllers.NotificationPreferenceBulkItem"
                     }
                 }
             }
         },
-        "models.NotificationPreferenceUpdateRequest": {
-            "description": "Update notification preferences request",
+        "controllers.NotificationPreferenceListResponse": {
+            "description": "Resposta da lista de preferências de notificação",
+            "type": "object",
+            "properties": {
+                "preferences": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/controllers.NotificationPreferenceResponse"
+                    }
+                }
+            }
+        },
+        "controllers.NotificationPreferenceResponse": {
+            "description": "Resposta da preferência de notificação",
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string",
+                    "example": "2023-01-01T12:00:00Z"
+                },
+                "enabled": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "event": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/controllers.NotificationEvent"
+                        }
+                    ],
+                    "example": "member_joined"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "updated_at": {
+                    "type": "string",
+                    "example": "2023-01-01T12:00:00Z"
+                }
+            }
+        },
+        "controllers.NotificationPreferenceUpdateRequest": {
+            "description": "Requisição de atualização de preferências de notificação",
             "type": "object",
             "properties": {
                 "enabled": {
@@ -2485,7 +2248,53 @@ const docTemplate = `{
                 }
             }
         },
-        "models.NotificationType": {
+        "controllers.NotificationResponse": {
+            "description": "Resposta da notificação",
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string",
+                    "example": "2023-01-01T12:00:00Z"
+                },
+                "data": {
+                    "type": "string",
+                    "example": "{\"action\":\"member_joined\",\"member_id\":\"123\"}"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "João Silva foi adicionado à organização TechCorp"
+                },
+                "organization_id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440002"
+                },
+                "read": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "read_at": {
+                    "type": "string",
+                    "example": "2023-01-01T12:00:00Z"
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Novo membro na organização"
+                },
+                "type": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/controllers.NotificationType"
+                        }
+                    ],
+                    "example": "info"
+                }
+            }
+        },
+        "controllers.NotificationType": {
             "type": "string",
             "enum": [
                 "info",
@@ -2500,8 +2309,8 @@ const docTemplate = `{
                 "NotificationTypeError"
             ]
         },
-        "models.OrganizationCreateRequest": {
-            "description": "Organization creation request",
+        "controllers.OrganizationCreateRequest": {
+            "description": "Requisição de criação de organização",
             "type": "object",
             "required": [
                 "name"
@@ -2520,14 +2329,14 @@ const docTemplate = `{
                 }
             }
         },
-        "models.OrganizationInviteListResponse": {
-            "description": "Organization invitation list response with pagination",
+        "controllers.OrganizationInviteListResponse": {
+            "description": "Resposta da lista de convites da organização com paginação",
             "type": "object",
             "properties": {
                 "data": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.OrganizationInviteResponse"
+                        "$ref": "#/definitions/controllers.OrganizationInviteResponse"
                     }
                 },
                 "limit": {
@@ -2544,8 +2353,8 @@ const docTemplate = `{
                 }
             }
         },
-        "models.OrganizationInviteRequest": {
-            "description": "Organization invitation request",
+        "controllers.OrganizationInviteRequest": {
+            "description": "Requisição de convite da organização",
             "type": "object",
             "required": [
                 "email",
@@ -2563,15 +2372,15 @@ const docTemplate = `{
                     ],
                     "allOf": [
                         {
-                            "$ref": "#/definitions/models.OrganizationRole"
+                            "$ref": "#/definitions/controllers.OrganizationRole"
                         }
                     ],
                     "example": "user"
                 }
             }
         },
-        "models.OrganizationInviteResponse": {
-            "description": "Organization invitation response",
+        "controllers.OrganizationInviteResponse": {
+            "description": "Resposta do convite da organização",
             "type": "object",
             "properties": {
                 "accepted_at": {
@@ -2599,10 +2408,10 @@ const docTemplate = `{
                     "example": "550e8400-e29b-41d4-a716-446655440002"
                 },
                 "inviter": {
-                    "$ref": "#/definitions/models.UserResponse"
+                    "$ref": "#/definitions/controllers.UserResponse"
                 },
                 "organization": {
-                    "$ref": "#/definitions/models.OrganizationResponse"
+                    "$ref": "#/definitions/controllers.OrganizationResponse"
                 },
                 "organization_id": {
                     "type": "string",
@@ -2611,7 +2420,7 @@ const docTemplate = `{
                 "role": {
                     "allOf": [
                         {
-                            "$ref": "#/definitions/models.OrganizationRole"
+                            "$ref": "#/definitions/controllers.OrganizationRole"
                         }
                     ],
                     "example": "user"
@@ -2619,7 +2428,7 @@ const docTemplate = `{
                 "status": {
                     "allOf": [
                         {
-                            "$ref": "#/definitions/models.InviteStatus"
+                            "$ref": "#/definitions/controllers.InviteStatus"
                         }
                     ],
                     "example": "pending"
@@ -2630,14 +2439,14 @@ const docTemplate = `{
                 }
             }
         },
-        "models.OrganizationListResponse": {
-            "description": "Organization list response with pagination",
+        "controllers.OrganizationListResponse": {
+            "description": "Resposta da lista de organizações com paginação",
             "type": "object",
             "properties": {
                 "data": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.OrganizationResponse"
+                        "$ref": "#/definitions/controllers.OrganizationResponse"
                     }
                 },
                 "limit": {
@@ -2654,14 +2463,14 @@ const docTemplate = `{
                 }
             }
         },
-        "models.OrganizationMemberListResponse": {
-            "description": "Organization member list response with pagination",
+        "controllers.OrganizationMemberListResponse": {
+            "description": "Resposta da lista de membros da organização com paginação",
             "type": "object",
             "properties": {
                 "data": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.OrganizationMemberResponse"
+                        "$ref": "#/definitions/controllers.OrganizationMemberResponse"
                     }
                 },
                 "limit": {
@@ -2678,8 +2487,8 @@ const docTemplate = `{
                 }
             }
         },
-        "models.OrganizationMemberResponse": {
-            "description": "Organization member response",
+        "controllers.OrganizationMemberResponse": {
+            "description": "Resposta do membro da organização",
             "type": "object",
             "properties": {
                 "created_at": {
@@ -2695,7 +2504,7 @@ const docTemplate = `{
                     "example": "2023-01-01T12:00:00Z"
                 },
                 "organization": {
-                    "$ref": "#/definitions/models.OrganizationResponse"
+                    "$ref": "#/definitions/controllers.OrganizationResponse"
                 },
                 "organization_id": {
                     "type": "string",
@@ -2704,7 +2513,7 @@ const docTemplate = `{
                 "role": {
                     "allOf": [
                         {
-                            "$ref": "#/definitions/models.OrganizationRole"
+                            "$ref": "#/definitions/controllers.OrganizationRole"
                         }
                     ],
                     "example": "user"
@@ -2714,7 +2523,7 @@ const docTemplate = `{
                     "example": "2023-01-01T12:00:00Z"
                 },
                 "user": {
-                    "$ref": "#/definitions/models.UserResponse"
+                    "$ref": "#/definitions/controllers.UserResponse"
                 },
                 "user_id": {
                     "type": "string",
@@ -2722,8 +2531,8 @@ const docTemplate = `{
                 }
             }
         },
-        "models.OrganizationMemberUpdateRequest": {
-            "description": "Organization member update request",
+        "controllers.OrganizationMemberUpdateRequest": {
+            "description": "Requisição de atualização de membro da organização",
             "type": "object",
             "required": [
                 "role"
@@ -2736,15 +2545,15 @@ const docTemplate = `{
                     ],
                     "allOf": [
                         {
-                            "$ref": "#/definitions/models.OrganizationRole"
+                            "$ref": "#/definitions/controllers.OrganizationRole"
                         }
                     ],
                     "example": "user"
                 }
             }
         },
-        "models.OrganizationResponse": {
-            "description": "Organization response",
+        "controllers.OrganizationResponse": {
+            "description": "Resposta da organização",
             "type": "object",
             "properties": {
                 "created_at": {
@@ -2756,7 +2565,7 @@ const docTemplate = `{
                     "example": "550e8400-e29b-41d4-a716-446655440001"
                 },
                 "creator": {
-                    "$ref": "#/definitions/models.UserResponse"
+                    "$ref": "#/definitions/controllers.UserResponse"
                 },
                 "description": {
                     "type": "string",
@@ -2766,17 +2575,13 @@ const docTemplate = `{
                     "type": "string",
                     "example": "550e8400-e29b-41d4-a716-446655440000"
                 },
-                "invites": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.OrganizationInviteResponse"
-                    }
+                "invite_count": {
+                    "type": "integer",
+                    "example": 2
                 },
-                "members": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.OrganizationMemberResponse"
-                    }
+                "member_count": {
+                    "type": "integer",
+                    "example": 5
                 },
                 "name": {
                     "type": "string",
@@ -2788,7 +2593,7 @@ const docTemplate = `{
                 }
             }
         },
-        "models.OrganizationRole": {
+        "controllers.OrganizationRole": {
             "type": "string",
             "enum": [
                 "admin",
@@ -2799,8 +2604,8 @@ const docTemplate = `{
                 "OrganizationRoleUser"
             ]
         },
-        "models.OrganizationUpdateRequest": {
-            "description": "Organization update request",
+        "controllers.OrganizationUpdateRequest": {
+            "description": "Requisição de atualização de organização",
             "type": "object",
             "properties": {
                 "description": {
@@ -2816,8 +2621,8 @@ const docTemplate = `{
                 }
             }
         },
-        "models.PasswordResetConfirmRequest": {
-            "description": "Password reset confirmation request",
+        "controllers.PasswordResetConfirmRequest": {
+            "description": "Requisição de confirmação de redefinição de senha",
             "type": "object",
             "required": [
                 "new_password",
@@ -2826,8 +2631,8 @@ const docTemplate = `{
             "properties": {
                 "new_password": {
                     "type": "string",
-                    "minLength": 6,
-                    "example": "newpassword123"
+                    "minLength": 8,
+                    "example": "NewSecurePass123!"
                 },
                 "token": {
                     "type": "string",
@@ -2835,8 +2640,8 @@ const docTemplate = `{
                 }
             }
         },
-        "models.PasswordResetRequest": {
-            "description": "Password reset request",
+        "controllers.PasswordResetRequest": {
+            "description": "Requisição de redefinição de senha",
             "type": "object",
             "required": [
                 "email"
@@ -2848,8 +2653,8 @@ const docTemplate = `{
                 }
             }
         },
-        "models.ProfileResponse": {
-            "description": "Profile response",
+        "controllers.ProfileResponse": {
+            "description": "Resposta do perfil",
             "type": "object",
             "properties": {
                 "city": {
@@ -2886,8 +2691,8 @@ const docTemplate = `{
                 }
             }
         },
-        "models.RegisterRequest": {
-            "description": "User registration request",
+        "controllers.RegisterRequest": {
+            "description": "Requisição de registro do usuário",
             "type": "object",
             "required": [
                 "email",
@@ -2907,13 +2712,13 @@ const docTemplate = `{
                 },
                 "password": {
                     "type": "string",
-                    "minLength": 6,
-                    "example": "password123"
+                    "minLength": 8,
+                    "example": "SecurePass123!"
                 }
             }
         },
-        "models.TestNotificationRequest": {
-            "description": "Test notification request",
+        "controllers.TestNotificationRequest": {
+            "description": "Requisição de notificação de teste",
             "type": "object",
             "required": [
                 "message",
@@ -2947,15 +2752,38 @@ const docTemplate = `{
                     ],
                     "allOf": [
                         {
-                            "$ref": "#/definitions/models.NotificationType"
+                            "$ref": "#/definitions/controllers.NotificationType"
                         }
                     ],
                     "example": "info"
                 }
             }
         },
-        "models.UpdateLastSelectedOrganizationRequest": {
-            "description": "Update last selected organization request",
+        "controllers.TestNotificationResponse": {
+            "description": "Resposta da notificação de teste",
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "example": "Test notification sent successfully"
+                },
+                "notification": {
+                    "$ref": "#/definitions/controllers.NotificationResponse"
+                }
+            }
+        },
+        "controllers.UnreadCountResponse": {
+            "description": "Resposta da contagem de notificações não lidas",
+            "type": "object",
+            "properties": {
+                "count": {
+                    "type": "integer",
+                    "example": 5
+                }
+            }
+        },
+        "controllers.UpdateLastSelectedOrganizationRequest": {
+            "description": "Requisição de atualização da última organização selecionada",
             "type": "object",
             "properties": {
                 "organization_id": {
@@ -2964,8 +2792,8 @@ const docTemplate = `{
                 }
             }
         },
-        "models.UserResponse": {
-            "description": "User response",
+        "controllers.UserResponse": {
+            "description": "Resposta do usuário",
             "type": "object",
             "properties": {
                 "created_at": {
@@ -2985,7 +2813,7 @@ const docTemplate = `{
                     "example": "John Doe"
                 },
                 "profile": {
-                    "$ref": "#/definitions/models.ProfileResponse"
+                    "$ref": "#/definitions/controllers.ProfileResponse"
                 },
                 "updated_at": {
                     "type": "string",
@@ -2996,11 +2824,193 @@ const docTemplate = `{
                     "example": "user@example.com"
                 }
             }
+        },
+        "errors.BadRequestProblem": {
+            "description": "Resposta de erro de requisição inválida",
+            "type": "object",
+            "properties": {
+                "detail": {
+                    "type": "string",
+                    "example": "Formato de requisição ou parâmetros inválidos"
+                },
+                "instance": {
+                    "type": "string",
+                    "example": "/api/v1/notifications"
+                },
+                "status": {
+                    "type": "integer",
+                    "example": 400
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Requisição Inválida"
+                },
+                "type": {
+                    "type": "string",
+                    "example": "https://avantpro-backend.com/errors/bad-request"
+                }
+            }
+        },
+        "errors.ConflictProblem": {
+            "description": "Resposta de erro de conflito",
+            "type": "object",
+            "properties": {
+                "detail": {
+                    "type": "string",
+                    "example": "Recurso já existe ou entra em conflito com o estado atual"
+                },
+                "instance": {
+                    "type": "string",
+                    "example": "/api/v1/users"
+                },
+                "status": {
+                    "type": "integer",
+                    "example": 409
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Conflito de Recurso"
+                },
+                "type": {
+                    "type": "string",
+                    "example": "https://avantpro-backend.com/errors/conflict"
+                }
+            }
+        },
+        "errors.ForbiddenProblem": {
+            "description": "Resposta de erro proibido",
+            "type": "object",
+            "properties": {
+                "detail": {
+                    "type": "string",
+                    "example": "Acesso negado para este recurso"
+                },
+                "instance": {
+                    "type": "string",
+                    "example": "/api/v1/organizations"
+                },
+                "status": {
+                    "type": "integer",
+                    "example": 403
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Proibido"
+                },
+                "type": {
+                    "type": "string",
+                    "example": "https://avantpro-backend.com/errors/forbidden"
+                }
+            }
+        },
+        "errors.GoneProblem": {
+            "description": "Resposta de erro de recurso indisponível",
+            "type": "object",
+            "properties": {
+                "detail": {
+                    "type": "string",
+                    "example": "Recurso não está mais disponível (ex: convite expirado)"
+                },
+                "instance": {
+                    "type": "string",
+                    "example": "/api/v1/invites/token/abc123"
+                },
+                "status": {
+                    "type": "integer",
+                    "example": 410
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Recurso Indisponível"
+                },
+                "type": {
+                    "type": "string",
+                    "example": "https://avantpro-backend.com/errors/gone"
+                }
+            }
+        },
+        "errors.InternalServerProblem": {
+            "description": "Resposta de erro interno do servidor",
+            "type": "object",
+            "properties": {
+                "detail": {
+                    "type": "string",
+                    "example": "Ocorreu um erro inesperado. Tente novamente mais tarde."
+                },
+                "instance": {
+                    "type": "string",
+                    "example": "/api/v1/notifications"
+                },
+                "status": {
+                    "type": "integer",
+                    "example": 500
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Erro Interno do Servidor"
+                },
+                "type": {
+                    "type": "string",
+                    "example": "https://avantpro-backend.com/errors/internal"
+                }
+            }
+        },
+        "errors.NotFoundProblem": {
+            "description": "Resposta de erro não encontrado",
+            "type": "object",
+            "properties": {
+                "detail": {
+                    "type": "string",
+                    "example": "O recurso solicitado não foi encontrado"
+                },
+                "instance": {
+                    "type": "string",
+                    "example": "/api/v1/notifications/123"
+                },
+                "status": {
+                    "type": "integer",
+                    "example": 404
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Recurso Não Encontrado"
+                },
+                "type": {
+                    "type": "string",
+                    "example": "https://avantpro-backend.com/errors/not-found"
+                }
+            }
+        },
+        "errors.UnauthorizedProblem": {
+            "description": "Resposta de erro não autorizado",
+            "type": "object",
+            "properties": {
+                "detail": {
+                    "type": "string",
+                    "example": "Autenticação necessária ou token inválido"
+                },
+                "instance": {
+                    "type": "string",
+                    "example": "/api/v1/notifications"
+                },
+                "status": {
+                    "type": "integer",
+                    "example": 401
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Não Autorizado"
+                },
+                "type": {
+                    "type": "string",
+                    "example": "https://avantpro-backend.com/errors/unauthorized"
+                }
+            }
         }
     },
     "securityDefinitions": {
         "BearerAuth": {
-            "description": "Type \"Bearer\" followed by a space and JWT token.",
+            "description": "Digite \"Bearer\" seguido de um espaço e o token JWT.",
             "type": "apiKey",
             "name": "Authorization",
             "in": "header"
@@ -3015,7 +3025,7 @@ var SwaggerInfo = &swag.Spec{
 	BasePath:         "/api/v1",
 	Schemes:          []string{},
 	Title:            "AvantPro Backend API",
-	Description:      "User Management API with Profile support",
+	Description:      "APIs do Avant Pro",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

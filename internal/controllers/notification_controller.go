@@ -9,64 +9,78 @@ import (
 	"github.com/google/uuid"
 
 	problemErrors "github.com/rafabene/avantpro-backend/internal/errors"
-	"github.com/rafabene/avantpro-backend/internal/models"
 	"github.com/rafabene/avantpro-backend/internal/services"
 )
 
-// NotificationController handles HTTP requests for notification operations
+// NotificationController gerencia requisições HTTP para operações de notificação
 type NotificationController struct {
 	notificationService services.NotificationService
 }
 
-// NewNotificationController creates a new NotificationController instance
+// NewNotificationController cria uma nova instância do NotificationController
 func NewNotificationController(notificationService services.NotificationService) *NotificationController {
 	return &NotificationController{
 		notificationService: notificationService,
 	}
 }
 
-// getOrganizationIDFromHeader extracts and validates the Organization-ID header
+// getOrganizationIDFromHeader extrai e valida o cabeçalho Organization-ID
 func (c *NotificationController) getOrganizationIDFromHeader(ctx *gin.Context) (*uuid.UUID, error) {
 	orgIDHeader := ctx.GetHeader("Organization-ID")
 	if orgIDHeader == "" {
-		return nil, errors.New("Organization-ID header is required")
+		return nil, errors.New("cabeçalho Organization-ID é obrigatório")
 	}
 
 	orgID, err := uuid.Parse(orgIDHeader)
 	if err != nil {
-		return nil, errors.New("invalid Organization-ID format")
+		return nil, errors.New("formato de Organization-ID inválido")
 	}
 
 	return &orgID, nil
 }
 
-// GetUserNotifications retrieves paginated notifications for the authenticated user
-// @Summary Get user notifications
-// @Description Retrieve paginated list of notifications for the authenticated user
+// getUserIDFromContext extrai o ID do usuário do contexto do token JWT
+func (c *NotificationController) getUserIDFromContext(ctx *gin.Context) (uuid.UUID, error) {
+	userID, exists := ctx.Get("userID")
+	if !exists {
+		return uuid.Nil, errors.New("usuário não autenticado")
+	}
+
+	userIDUUID, ok := userID.(uuid.UUID)
+	if !ok {
+		return uuid.Nil, errors.New("formato de ID de usuário inválido")
+	}
+
+	return userIDUUID, nil
+}
+
+// GetUserNotifications obtém notificações paginadas para o usuário autenticado
+// @Summary Obter notificações do usuário
+// @Description Recuperar lista paginada de notificações para o usuário autenticado
 // @Tags notifications
 // @Accept json
 // @Produce json
-// @Param Organization-ID header string true "Organization ID"
-// @Param page query int false "Page number (default: 1)" default(1)
-// @Param limit query int false "Number of items per page (default: 10, max: 100)" default(10)
-// @Param sortBy query string false "Sort by field (title, type, read, created_at, updated_at)" default(created_at)
-// @Param sortOrder query string false "Sort order (asc, desc)" default(desc)
+// @Param Organization-ID header string true "ID da Organização"
+// @Param page query int false "Número da página (padrão: 1)" default(1)
+// @Param limit query int false "Número de itens por página (padrão: 10, máx: 100)" default(10)
+// @Param sortBy query string false "Ordenar por campo (title, type, read, created_at, updated_at)" default(created_at)
+// @Param sortOrder query string false "Ordem de classificação (asc, desc)" default(desc)
 // @Security BearerAuth
-// @Success 200 {object} map[string]interface{} "Success response with notifications and pagination"
-// @Failure 400 {object} map[string]interface{} "Bad request"
-// @Failure 401 {object} map[string]interface{} "Unauthorized"
-// @Failure 500 {object} map[string]interface{} "Internal server error"
-// @Router /organizations/notifications [get]
+// @Success 200 {object} controllers.NotificationListResponse "Resposta de sucesso com notificações e paginação"
+// @Failure 400 {object} errors.BadRequestProblem "Requisição inválida"
+// @Failure 401 {object} errors.UnauthorizedProblem "Não autorizado"
+// @Failure 500 {object} errors.InternalServerProblem "Erro interno do servidor"
+// @Router /notifications [get]
 func (c *NotificationController) GetUserNotifications(ctx *gin.Context) {
-	// Get user ID from JWT middleware
-	userID, exists := ctx.Get("userID")
-	if !exists {
-		prob := problemErrors.UnauthorizedError("User not authenticated", problemErrors.GetInstance(ctx))
+	// Obter ID do usuário do cabeçalho
+	userID, err := c.getUserIDFromContext(ctx)
+	if err != nil {
+		prob := problemErrors.ValidationError(err.Error(), problemErrors.GetInstance(ctx))
 		problemErrors.RespondWithProblem(ctx, prob)
 		return
 	}
 
-	// Get organization ID from header
+	// Obter ID da organização do cabeçalho
 	organizationID, err := c.getOrganizationIDFromHeader(ctx)
 	if err != nil {
 		prob := problemErrors.ValidationError(err.Error(), problemErrors.GetInstance(ctx))
@@ -74,7 +88,7 @@ func (c *NotificationController) GetUserNotifications(ctx *gin.Context) {
 		return
 	}
 
-	// Parse pagination parameters
+	// Analisar parâmetros de paginação
 	page, err := strconv.Atoi(ctx.DefaultQuery("page", "1"))
 	if err != nil || page < 1 {
 		page = 1
@@ -88,12 +102,12 @@ func (c *NotificationController) GetUserNotifications(ctx *gin.Context) {
 	sortBy := ctx.DefaultQuery("sortBy", "created_at")
 	sortOrder := ctx.DefaultQuery("sortOrder", "desc")
 
-	// Calculate offset
+	// Calcular deslocamento
 	offset := (page - 1) * limit
 
-	// Get notifications
+	// Obter notificações
 	notifications, total, err := c.notificationService.GetUserNotifications(
-		userID.(uuid.UUID),
+		userID,
 		organizationID,
 		limit,
 		offset,
@@ -106,7 +120,7 @@ func (c *NotificationController) GetUserNotifications(ctx *gin.Context) {
 		return
 	}
 
-	// Calculate pagination info
+	// Calcular informações de paginação
 	totalPages := (int(total) + limit - 1) / limit
 
 	ctx.JSON(http.StatusOK, gin.H{
@@ -120,28 +134,28 @@ func (c *NotificationController) GetUserNotifications(ctx *gin.Context) {
 	})
 }
 
-// GetUnreadNotifications retrieves all unread notifications for the authenticated user
-// @Summary Get unread notifications
-// @Description Retrieve all unread notifications for the authenticated user
+// GetUnreadNotifications obtém todas as notificações não lidas para o usuário autenticado
+// @Summary Obter notificações não lidas
+// @Description Recuperar todas as notificações não lidas para o usuário autenticado
 // @Tags notifications
 // @Accept json
 // @Produce json
-// @Param Organization-ID header string true "Organization ID"
+// @Param Organization-ID header string true "ID da Organização"
 // @Security BearerAuth
-// @Success 200 {object} map[string]interface{} "Success response with unread notifications"
-// @Failure 401 {object} map[string]interface{} "Unauthorized"
-// @Failure 500 {object} map[string]interface{} "Internal server error"
-// @Router /organizations/notifications/unread [get]
+// @Success 200 {object} []controllers.NotificationResponse "Resposta de sucesso com notificações não lidas"
+// @Failure 401 {object} errors.UnauthorizedProblem "Não autorizado"
+// @Failure 500 {object} errors.InternalServerProblem "Erro interno do servidor"
+// @Router /notifications/unread [get]
 func (c *NotificationController) GetUnreadNotifications(ctx *gin.Context) {
-	// Get user ID from JWT middleware
-	userID, exists := ctx.Get("userID")
-	if !exists {
-		prob := problemErrors.UnauthorizedError("User not authenticated", problemErrors.GetInstance(ctx))
+	// Obter ID do usuário do cabeçalho
+	userID, err := c.getUserIDFromContext(ctx)
+	if err != nil {
+		prob := problemErrors.ValidationError(err.Error(), problemErrors.GetInstance(ctx))
 		problemErrors.RespondWithProblem(ctx, prob)
 		return
 	}
 
-	// Get organization ID from header
+	// Obter ID da organização do cabeçalho
 	organizationID, err := c.getOrganizationIDFromHeader(ctx)
 	if err != nil {
 		prob := problemErrors.ValidationError(err.Error(), problemErrors.GetInstance(ctx))
@@ -149,8 +163,8 @@ func (c *NotificationController) GetUnreadNotifications(ctx *gin.Context) {
 		return
 	}
 
-	// Get unread notifications
-	notifications, err := c.notificationService.GetUnreadNotifications(userID.(uuid.UUID), organizationID)
+	// Obter notificações não lidas
+	notifications, err := c.notificationService.GetUnreadNotifications(userID, organizationID)
 	if err != nil {
 		prob := problemErrors.InternalError(problemErrors.GetInstance(ctx))
 		problemErrors.RespondWithProblem(ctx, prob)
@@ -163,28 +177,28 @@ func (c *NotificationController) GetUnreadNotifications(ctx *gin.Context) {
 	})
 }
 
-// GetUnreadCount retrieves the count of unread notifications for the authenticated user
-// @Summary Get unread notifications count
-// @Description Retrieve the count of unread notifications for the authenticated user
+// GetUnreadCount obtém a contagem de notificações não lidas para o usuário autenticado
+// @Summary Obter contagem de notificações não lidas
+// @Description Recuperar a contagem de notificações não lidas para o usuário autenticado
 // @Tags notifications
 // @Accept json
 // @Produce json
-// @Param Organization-ID header string true "Organization ID"
+// @Param Organization-ID header string true "ID da Organização"
 // @Security BearerAuth
-// @Success 200 {object} map[string]interface{} "Success response with unread count"
-// @Failure 401 {object} map[string]interface{} "Unauthorized"
-// @Failure 500 {object} map[string]interface{} "Internal server error"
-// @Router /organizations/notifications/unread-count [get]
+// @Success 200 {object} controllers.UnreadCountResponse "Resposta de sucesso com contagem não lida"
+// @Failure 401 {object} errors.UnauthorizedProblem "Não autorizado"
+// @Failure 500 {object} errors.InternalServerProblem "Erro interno do servidor"
+// @Router /notifications/unread-count [get]
 func (c *NotificationController) GetUnreadCount(ctx *gin.Context) {
-	// Get user ID from JWT middleware
-	userID, exists := ctx.Get("userID")
-	if !exists {
-		prob := problemErrors.UnauthorizedError("User not authenticated", problemErrors.GetInstance(ctx))
+	// Obter ID do usuário do cabeçalho
+	userID, err := c.getUserIDFromContext(ctx)
+	if err != nil {
+		prob := problemErrors.ValidationError(err.Error(), problemErrors.GetInstance(ctx))
 		problemErrors.RespondWithProblem(ctx, prob)
 		return
 	}
 
-	// Get organization ID from header
+	// Obter ID da organização do cabeçalho
 	organizationID, err := c.getOrganizationIDFromHeader(ctx)
 	if err != nil {
 		prob := problemErrors.ValidationError(err.Error(), problemErrors.GetInstance(ctx))
@@ -192,8 +206,8 @@ func (c *NotificationController) GetUnreadCount(ctx *gin.Context) {
 		return
 	}
 
-	// Get unread count
-	count, err := c.notificationService.GetUnreadCount(userID.(uuid.UUID), organizationID)
+	// Obter contagem não lida
+	count, err := c.notificationService.GetUnreadCount(userID, organizationID)
 	if err != nil {
 		prob := problemErrors.InternalError(problemErrors.GetInstance(ctx))
 		problemErrors.RespondWithProblem(ctx, prob)
@@ -205,48 +219,48 @@ func (c *NotificationController) GetUnreadCount(ctx *gin.Context) {
 	})
 }
 
-// MarkAsRead marks a specific notification as read
-// @Summary Mark notification as read
-// @Description Mark a specific notification as read for the authenticated user
+// MarkAsRead marca uma notificação específica como lida
+// @Summary Marcar notificação como lida
+// @Description Marcar uma notificação específica como lida para o usuário autenticado
 // @Tags notifications
 // @Accept json
 // @Produce json
-// @Param Organization-ID header string true "Organization ID"
-// @Param notifId path string true "Notification ID"
+// @Param Organization-ID header string true "ID da Organização"
+// @Param notifId path string true "ID da Notificação"
 // @Security BearerAuth
-// @Success 200 {object} models.MessageResponse "Success message"
-// @Failure 400 {object} map[string]interface{} "Bad request"
-// @Failure 401 {object} map[string]interface{} "Unauthorized"
-// @Failure 404 {object} map[string]interface{} "Notification not found"
-// @Failure 500 {object} map[string]interface{} "Internal server error"
-// @Router /organizations/notifications/{notifId}/read [put]
+// @Success 200 {object} controllers.MessageResponse "Mensagem de sucesso"
+// @Failure 400 {object} errors.BadRequestProblem "Requisição inválida"
+// @Failure 401 {object} errors.UnauthorizedProblem "Não autorizado"
+// @Failure 404 {object} errors.NotFoundProblem "Notificação não encontrada"
+// @Failure 500 {object} errors.InternalServerProblem "Erro interno do servidor"
+// @Router /notifications/{notifId}/read [put]
 func (c *NotificationController) MarkAsRead(ctx *gin.Context) {
-	// Get user ID from JWT middleware
-	userID, exists := ctx.Get("userID")
-	if !exists {
-		prob := problemErrors.UnauthorizedError("User not authenticated", problemErrors.GetInstance(ctx))
+	// Obter ID do usuário do cabeçalho
+	userID, err := c.getUserIDFromContext(ctx)
+	if err != nil {
+		prob := problemErrors.ValidationError(err.Error(), problemErrors.GetInstance(ctx))
 		problemErrors.RespondWithProblem(ctx, prob)
 		return
 	}
 
-	// Parse notification ID
+	// Analisar ID da notificação
 	notificationIDStr := ctx.Param("notifId")
 	notificationID, err := uuid.Parse(notificationIDStr)
 	if err != nil {
-		prob := problemErrors.BadRequestError("Invalid notification ID: "+err.Error(), problemErrors.GetInstance(ctx))
+		prob := problemErrors.BadRequestError("ID de notificação inválido: "+err.Error(), problemErrors.GetInstance(ctx))
 		problemErrors.RespondWithProblem(ctx, prob)
 		return
 	}
 
-	// Mark as read
-	if err := c.notificationService.MarkAsRead(notificationID, userID.(uuid.UUID)); err != nil {
+	// Marcar como lida
+	if err := c.notificationService.MarkAsRead(notificationID, userID); err != nil {
 		if err.Error() == "notification not found" {
-			prob := problemErrors.NotFoundError("Notification not found", problemErrors.GetInstance(ctx))
+			prob := problemErrors.NotFoundError("Notificação não encontrada", problemErrors.GetInstance(ctx))
 			problemErrors.RespondWithProblem(ctx, prob)
 			return
 		}
 		if err.Error() == "notification does not belong to user" {
-			prob := problemErrors.ForbiddenError("Access denied", problemErrors.GetInstance(ctx))
+			prob := problemErrors.ForbiddenError("Acesso negado", problemErrors.GetInstance(ctx))
 			problemErrors.RespondWithProblem(ctx, prob)
 			return
 		}
@@ -255,86 +269,86 @@ func (c *NotificationController) MarkAsRead(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, models.MessageResponse{
-		Message: "Notification marked as read successfully",
+	ctx.JSON(http.StatusOK, MessageResponse{
+		Message: "Notificação marcada como lida com sucesso",
 	})
 }
 
-// MarkAllAsRead marks all notifications as read for the authenticated user
-// @Summary Mark all notifications as read
-// @Description Mark all notifications as read for the authenticated user
+// MarkAllAsRead marca todas as notificações como lidas para o usuário autenticado
+// @Summary Marcar todas as notificações como lidas
+// @Description Marcar todas as notificações como lidas para o usuário autenticado
 // @Tags notifications
 // @Accept json
 // @Produce json
-// @Param Organization-ID header string true "Organization ID"
+// @Param Organization-ID header string true "ID da Organização"
 // @Security BearerAuth
-// @Success 200 {object} models.MessageResponse "Success message"
-// @Failure 401 {object} map[string]interface{} "Unauthorized"
-// @Failure 500 {object} map[string]interface{} "Internal server error"
-// @Router /organizations/notifications/mark-all-read [put]
+// @Success 200 {object} controllers.MessageResponse "Mensagem de sucesso"
+// @Failure 401 {object} errors.UnauthorizedProblem "Não autorizado"
+// @Failure 500 {object} errors.InternalServerProblem "Erro interno do servidor"
+// @Router /notifications/mark-all-read [put]
 func (c *NotificationController) MarkAllAsRead(ctx *gin.Context) {
-	// Get user ID from JWT middleware
-	userID, exists := ctx.Get("userID")
-	if !exists {
-		prob := problemErrors.UnauthorizedError("User not authenticated", problemErrors.GetInstance(ctx))
+	// Obter ID do usuário do cabeçalho
+	userID, err := c.getUserIDFromContext(ctx)
+	if err != nil {
+		prob := problemErrors.ValidationError(err.Error(), problemErrors.GetInstance(ctx))
 		problemErrors.RespondWithProblem(ctx, prob)
 		return
 	}
 
-	// Mark all as read
-	if err := c.notificationService.MarkAllAsRead(userID.(uuid.UUID)); err != nil {
+	// Marcar todas como lidas
+	if err := c.notificationService.MarkAllAsRead(userID); err != nil {
 		prob := problemErrors.InternalError(problemErrors.GetInstance(ctx))
 		problemErrors.RespondWithProblem(ctx, prob)
 		return
 	}
 
-	ctx.JSON(http.StatusOK, models.MessageResponse{
-		Message: "All notifications marked as read successfully",
+	ctx.JSON(http.StatusOK, MessageResponse{
+		Message: "Todas as notificações marcadas como lidas com sucesso",
 	})
 }
 
-// DeleteNotification deletes a specific notification
-// @Summary Delete notification
-// @Description Delete a specific notification for the authenticated user
+// DeleteNotification exclui uma notificação específica
+// @Summary Excluir notificação
+// @Description Excluir uma notificação específica para o usuário autenticado
 // @Tags notifications
 // @Accept json
 // @Produce json
-// @Param Organization-ID header string true "Organization ID"
-// @Param notifId path string true "Notification ID"
+// @Param Organization-ID header string true "ID da Organização"
+// @Param notifId path string true "ID da Notificação"
 // @Security BearerAuth
-// @Success 200 {object} models.MessageResponse "Success message"
-// @Failure 400 {object} map[string]interface{} "Bad request"
-// @Failure 401 {object} map[string]interface{} "Unauthorized"
-// @Failure 404 {object} map[string]interface{} "Notification not found"
-// @Failure 500 {object} map[string]interface{} "Internal server error"
-// @Router /organizations/notifications/{notifId} [delete]
+// @Success 200 {object} controllers.MessageResponse "Mensagem de sucesso"
+// @Failure 400 {object} errors.BadRequestProblem "Requisição inválida"
+// @Failure 401 {object} errors.UnauthorizedProblem "Não autorizado"
+// @Failure 404 {object} errors.NotFoundProblem "Notificação não encontrada"
+// @Failure 500 {object} errors.InternalServerProblem "Erro interno do servidor"
+// @Router /notifications/{notifId} [delete]
 func (c *NotificationController) DeleteNotification(ctx *gin.Context) {
-	// Get user ID from JWT middleware
-	userID, exists := ctx.Get("userID")
-	if !exists {
-		prob := problemErrors.UnauthorizedError("User not authenticated", problemErrors.GetInstance(ctx))
+	// Obter ID do usuário do cabeçalho
+	userID, err := c.getUserIDFromContext(ctx)
+	if err != nil {
+		prob := problemErrors.ValidationError(err.Error(), problemErrors.GetInstance(ctx))
 		problemErrors.RespondWithProblem(ctx, prob)
 		return
 	}
 
-	// Parse notification ID
+	// Analisar ID da notificação
 	notificationIDStr := ctx.Param("notifId")
 	notificationID, err := uuid.Parse(notificationIDStr)
 	if err != nil {
-		prob := problemErrors.BadRequestError("Invalid notification ID: "+err.Error(), problemErrors.GetInstance(ctx))
+		prob := problemErrors.BadRequestError("ID de notificação inválido: "+err.Error(), problemErrors.GetInstance(ctx))
 		problemErrors.RespondWithProblem(ctx, prob)
 		return
 	}
 
-	// Delete notification
-	if err := c.notificationService.DeleteNotification(notificationID, userID.(uuid.UUID)); err != nil {
+	// Excluir notificação
+	if err := c.notificationService.DeleteNotification(notificationID, userID); err != nil {
 		if err.Error() == "notification not found" {
-			prob := problemErrors.NotFoundError("Notification not found", problemErrors.GetInstance(ctx))
+			prob := problemErrors.NotFoundError("Notificação não encontrada", problemErrors.GetInstance(ctx))
 			problemErrors.RespondWithProblem(ctx, prob)
 			return
 		}
 		if err.Error() == "notification does not belong to user" {
-			prob := problemErrors.ForbiddenError("Access denied", problemErrors.GetInstance(ctx))
+			prob := problemErrors.ForbiddenError("Acesso negado", problemErrors.GetInstance(ctx))
 			problemErrors.RespondWithProblem(ctx, prob)
 			return
 		}
@@ -343,40 +357,40 @@ func (c *NotificationController) DeleteNotification(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, models.MessageResponse{
-		Message: "Notification deleted successfully",
+	ctx.JSON(http.StatusOK, MessageResponse{
+		Message: "Notificação excluída com sucesso",
 	})
 }
 
-// DeleteAllNotifications deletes all notifications for the authenticated user
-// @Summary Delete all notifications
-// @Description Delete all notifications for the authenticated user
+// DeleteAllNotifications exclui todas as notificações para o usuário autenticado
+// @Summary Excluir todas as notificações
+// @Description Excluir todas as notificações para o usuário autenticado
 // @Tags notifications
 // @Accept json
 // @Produce json
-// @Param Organization-ID header string true "Organization ID"
+// @Param Organization-ID header string true "ID da Organização"
 // @Security BearerAuth
-// @Success 200 {object} models.MessageResponse "Success message"
-// @Failure 401 {object} map[string]interface{} "Unauthorized"
-// @Failure 500 {object} map[string]interface{} "Internal server error"
-// @Router /organizations/notifications [delete]
+// @Success 200 {object} controllers.MessageResponse "Mensagem de sucesso"
+// @Failure 401 {object} errors.UnauthorizedProblem "Não autorizado"
+// @Failure 500 {object} errors.InternalServerProblem "Erro interno do servidor"
+// @Router /notifications [delete]
 func (c *NotificationController) DeleteAllNotifications(ctx *gin.Context) {
-	// Get user ID from JWT middleware
-	userID, exists := ctx.Get("userID")
-	if !exists {
-		prob := problemErrors.UnauthorizedError("User not authenticated", problemErrors.GetInstance(ctx))
+	// Obter ID do usuário do cabeçalho
+	userID, err := c.getUserIDFromContext(ctx)
+	if err != nil {
+		prob := problemErrors.ValidationError(err.Error(), problemErrors.GetInstance(ctx))
 		problemErrors.RespondWithProblem(ctx, prob)
 		return
 	}
 
-	// Delete all notifications
-	if err := c.notificationService.DeleteAllNotifications(userID.(uuid.UUID)); err != nil {
+	// Excluir todas as notificações
+	if err := c.notificationService.DeleteAllNotifications(userID); err != nil {
 		prob := problemErrors.InternalError(problemErrors.GetInstance(ctx))
 		problemErrors.RespondWithProblem(ctx, prob)
 		return
 	}
 
-	ctx.JSON(http.StatusOK, models.MessageResponse{
-		Message: "All notifications deleted successfully",
+	ctx.JSON(http.StatusOK, MessageResponse{
+		Message: "Todas as notificações excluídas com sucesso",
 	})
 }

@@ -4,12 +4,14 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"log"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 
+	"github.com/rafabene/avantpro-backend/internal/config"
 	"github.com/rafabene/avantpro-backend/internal/models"
 	"github.com/rafabene/avantpro-backend/internal/repositories"
 )
@@ -19,22 +21,24 @@ import (
 // and password management with JWT token generation.
 type AuthService interface {
 	// Login authenticates a user with email and password.
-	// This method validates credentials and returns a JWT token for authorized access.
+	// This method validates credentials, checks for account lockout, and returns a JWT token for authorized access.
 	// Parameters:
 	//   - req: Login request containing email and password
+	//   - ipAddress: Client IP address for security tracking
+	//   - userAgent: Client user agent for security tracking
 	// Returns:
-	//   - *models.LoginResponse: JWT token and user information
-	//   - error: Error if credentials are invalid or authentication fails
-	Login(req *models.LoginRequest) (*models.LoginResponse, error)
+	//   - *LoginResponse: JWT token and user information
+	//   - error: Error if credentials are invalid, account is locked, or authentication fails
+	LoginWithContext(req *LoginRequest, ipAddress, userAgent string) (*LoginResponse, error)
 
 	// Register creates a new user account and automatically logs them in.
 	// This method validates user data, creates the account, and returns a JWT token.
 	// Parameters:
 	//   - req: Registration request containing email, name, and password
 	// Returns:
-	//   - *models.LoginResponse: JWT token and user information
+	//   - *LoginResponse: JWT token and user information
 	//   - error: Error if validation fails or user already exists
-	Register(req *models.RegisterRequest) (*models.LoginResponse, error)
+	Register(req *RegisterRequest) (*LoginResponse, error)
 
 	// RequestPasswordReset initiates the password reset process for a user.
 	// This method generates a reset token and sends a password reset email.
@@ -65,11 +69,13 @@ type AuthService interface {
 
 // authService implements AuthService interface.
 // It provides authentication and authorization services including user login,
-// registration, password management, and JWT token generation and validation.
+// registration, password management, JWT token generation and account security.
 type authService struct {
 	userRepo          repositories.UserRepository          // Repository for user data operations
 	passwordResetRepo repositories.PasswordResetRepository // Repository for password reset token operations
 	jwtSecret         string                               // Secret key for JWT token signing and validation
+	authConfig        *config.AuthConfig                   // Authentication configuration
+	jwtConfig         *config.JWTConfig                    // JWT configuration for token expiration
 }
 
 // NewAuthService creates a new AuthService instance.
@@ -78,34 +84,70 @@ type authService struct {
 //   - userRepo: Repository interface for user data operations
 //   - passwordResetRepo: Repository interface for password reset token operations
 //   - jwtSecret: Secret key for JWT token signing (should be strong and secure)
+//   - authConfig: Authentication configuration for security settings
+//   - jwtConfig: JWT configuration for token expiration settings
 //
 // Returns:
 //   - AuthService: Configured authentication service ready for use
-func NewAuthService(userRepo repositories.UserRepository, passwordResetRepo repositories.PasswordResetRepository, jwtSecret string) AuthService {
+func NewAuthService(userRepo repositories.UserRepository, passwordResetRepo repositories.PasswordResetRepository, jwtSecret string, authConfig *config.AuthConfig, jwtConfig *config.JWTConfig) AuthService {
 	return &authService{
 		userRepo:          userRepo,
 		passwordResetRepo: passwordResetRepo,
 		jwtSecret:         jwtSecret,
+		authConfig:        authConfig,
+		jwtConfig:         jwtConfig,
 	}
 }
 
-// Login authenticates a user and returns a JWT token
-func (s *authService) Login(req *models.LoginRequest) (*models.LoginResponse, error) {
+// LoginWithContext authenticates a user with enhanced security features
+func (s *authService) LoginWithContext(req *LoginRequest, ipAddress, userAgent string) (*LoginResponse, error) {
+	// Get user from database
 	user, err := s.userRepo.GetByUsername(req.Email)
 	if err != nil {
-		return nil, errors.New("invalid credentials")
+		log.Printf("Tentativa de login para usuário inexistente: %s do IP: %s", req.Email, ipAddress)
+		return nil, errors.New("email ou senha incorretos")
 	}
 
+	// Check if account is locked
+	if user.IsLocked() {
+		remaining := user.GetRemainingLockTime()
+		log.Printf("Tentativa de login bloqueada para usuário bloqueado: %s do IP: %s, tempo restante de bloqueio: %v", user.Username, ipAddress, remaining.Truncate(time.Second))
+		return nil, fmt.Errorf("Conta bloqueada devido a muitas tentativas de login falhadas. Tente novamente em %v", remaining.Truncate(time.Second))
+	}
+
+	// Check password
 	if !user.CheckPassword(req.Password) {
-		return nil, errors.New("invalid credentials")
+		// Record failed attempt
+		user.RecordFailedLogin()
+		log.Printf("Tentativa de login falhou %d/%d para usuário: %s do IP: %s", user.FailedLoginAttempts, s.authConfig.MaxLoginAttempts, user.Username, ipAddress)
+
+		// Check if we need to lock the account
+		if user.FailedLoginAttempts >= s.authConfig.MaxLoginAttempts {
+			user.LockAccount(s.authConfig.AccountLockoutDuration)
+			log.Printf("Conta bloqueada para usuário %s após %d tentativas falhadas do IP: %s", user.Username, user.FailedLoginAttempts, ipAddress)
+		}
+
+		// Update user with failed attempt info
+		if err := s.userRepo.Update(user); err != nil {
+			log.Printf("Erro ao atualizar usuário após login falhado: %v", err)
+		}
+
+		return nil, errors.New("email ou senha incorretos")
 	}
 
+	// Clear failed attempts on successful login
+	user.ResetFailedAttempts()
+	if err := s.userRepo.Update(user); err != nil {
+		log.Printf("Erro ao limpar tentativas falhadas para %s: %v", user.Username, err)
+	}
+
+	// Generate JWT token
 	token, err := s.generateJWT(user.ID)
 	if err != nil {
 		return nil, err
 	}
 
-	userResponse := models.UserResponse{
+	userResponse := UserResponse{
 		ID:                         user.ID,
 		Username:                   user.Username,
 		Name:                       user.Name,
@@ -115,7 +157,7 @@ func (s *authService) Login(req *models.LoginRequest) (*models.LoginResponse, er
 	}
 
 	if user.Profile != nil {
-		userResponse.Profile = &models.ProfileResponse{
+		userResponse.Profile = &ProfileResponse{
 			ID:        user.Profile.ID,
 			Street:    user.Profile.Street,
 			City:      user.Profile.City,
@@ -127,18 +169,18 @@ func (s *authService) Login(req *models.LoginRequest) (*models.LoginResponse, er
 		}
 	}
 
-	return &models.LoginResponse{
+	return &LoginResponse{
 		Token: token,
 		User:  userResponse,
 	}, nil
 }
 
 // Register creates a new user account and returns a JWT token
-func (s *authService) Register(req *models.RegisterRequest) (*models.LoginResponse, error) {
+func (s *authService) Register(req *RegisterRequest) (*LoginResponse, error) {
 	// Check if user already exists
 	existingUser, _ := s.userRepo.GetByUsername(req.Email)
 	if existingUser != nil {
-		return nil, errors.New("user already exists")
+		return nil, errors.New("Usuário já existe")
 	}
 
 	// Create user
@@ -148,10 +190,22 @@ func (s *authService) Register(req *models.RegisterRequest) (*models.LoginRespon
 		Password: req.Password,
 	}
 
-	err := s.userRepo.Create(user)
+	// Convert to models.User for repository
+	repoUser := &models.User{
+		Username: user.Username,
+		Name:     user.Name,
+		Password: user.Password,
+	}
+
+	err := s.userRepo.Create(repoUser)
 	if err != nil {
 		return nil, err
 	}
+
+	// Copy back generated fields
+	user.ID = repoUser.ID
+	user.CreatedAt = repoUser.CreatedAt
+	user.UpdatedAt = repoUser.UpdatedAt
 
 	// Generate token
 	token, err := s.generateJWT(user.ID)
@@ -159,7 +213,7 @@ func (s *authService) Register(req *models.RegisterRequest) (*models.LoginRespon
 		return nil, err
 	}
 
-	userResponse := models.UserResponse{
+	userResponse := UserResponse{
 		ID:                         user.ID,
 		Username:                   user.Username,
 		Name:                       user.Name,
@@ -168,7 +222,7 @@ func (s *authService) Register(req *models.RegisterRequest) (*models.LoginRespon
 		UpdatedAt:                  user.UpdatedAt,
 	}
 
-	return &models.LoginResponse{
+	return &LoginResponse{
 		Token: token,
 		User:  userResponse,
 	}, nil
@@ -178,12 +232,12 @@ func (s *authService) Register(req *models.RegisterRequest) (*models.LoginRespon
 func (s *authService) RequestPasswordReset(email string) error {
 	user, err := s.userRepo.GetByUsername(email)
 	if err != nil {
-		return errors.New("user not found")
+		return errors.New("usuário não encontrado")
 	}
 
 	// Delete any existing tokens for this user
 	if err := s.passwordResetRepo.DeleteUserTokens(user.ID); err != nil {
-		log.Printf("Error deleting existing tokens for user %s: %v", user.ID, err)
+		log.Printf("Erro ao deletar tokens existentes para usuário %s: %v", user.ID, err)
 	}
 
 	// Generate a unique reset token
@@ -198,18 +252,18 @@ func (s *authService) RequestPasswordReset(email string) error {
 
 	// Store the token in database
 	if err := s.passwordResetRepo.Create(tokenRecord); err != nil {
-		log.Printf("Error creating password reset token: %v", err)
+		log.Printf("Erro ao criar token de reset de senha: %v", err)
 		return err
 	}
-	log.Printf("Password reset token created successfully in database")
+	log.Printf("Token de reset de senha criado com sucesso no banco de dados")
 
 	// Log the password reset request (simulating email sending)
-	log.Printf("\n\n====== PASSWORD RESET REQUEST ======")
-	log.Printf("User Email: %s", email)
-	log.Printf("Reset Token: %s", resetToken)
-	log.Printf("Reset URL: http://localhost:4200/auth/password-reset/confirm?token=%s", resetToken)
-	log.Printf("Token expires at: %s", tokenRecord.ExpiresAt.Format("2006-01-02 15:04:05"))
-	log.Printf("====================================\n")
+	log.Printf("\n\n====== SOLICITAÇÃO DE RESET DE SENHA ======")
+	log.Printf("Email do Usuário: %s", email)
+	log.Printf("Token de Reset: %s", resetToken)
+	log.Printf("URL de Reset: http://localhost:4200/auth/password-reset/confirm?token=%s", resetToken)
+	log.Printf("Token expira em: %s", tokenRecord.ExpiresAt.Format("2006-01-02 15:04:05"))
+	log.Printf("==========================================\n")
 
 	return nil
 }
@@ -217,31 +271,31 @@ func (s *authService) RequestPasswordReset(email string) error {
 // ResetPassword resets user password using a token
 func (s *authService) ResetPassword(token, newPassword string) error {
 	if token == "" {
-		return errors.New("invalid or expired token")
+		return errors.New("token inválido ou expirado")
 	}
 
 	// Get the token from database
-	log.Printf("Searching for reset token: %s", token)
+	log.Printf("Buscando token de reset: %s", token)
 	resetToken, err := s.passwordResetRepo.GetByToken(token)
 	if err != nil {
-		log.Printf("Error getting reset token: %v", err)
+		log.Printf("Erro ao buscar token de reset: %v", err)
 		return err
 	}
 	if resetToken == nil {
-		log.Printf("Reset token not found in database")
-		return errors.New("invalid or expired token")
+		log.Printf("Token de reset não encontrado no banco de dados")
+		return errors.New("token inválido ou expirado")
 	}
-	log.Printf("Reset token found, UserID: %s, ExpiresAt: %s", resetToken.UserID, resetToken.ExpiresAt)
+	log.Printf("Token de reset encontrado, UserID: %s, ExpiresAt: %s", resetToken.UserID, resetToken.ExpiresAt)
 
 	// Validate the token
 	if !resetToken.IsValid() {
 		if resetToken.IsExpired() {
-			return errors.New("token has expired")
+			return errors.New("token expirado")
 		}
 		if resetToken.IsUsed() {
-			return errors.New("token has already been used")
+			return errors.New("token já foi utilizado")
 		}
-		return errors.New("invalid token")
+		return errors.New("token inválido")
 	}
 
 	// Get the user
@@ -250,31 +304,31 @@ func (s *authService) ResetPassword(token, newPassword string) error {
 		return err
 	}
 	if user == nil {
-		return errors.New("user not found")
+		return errors.New("usuário não encontrado")
 	}
 
 	// Update the user's password
 	user.Password = newPassword
 	// Manually hash the password before updating
 	if err := user.HashPassword(); err != nil {
-		log.Printf("Error hashing new password: %v", err)
+		log.Printf("Erro ao fazer hash da nova senha: %v", err)
 		return err
 	}
-	log.Printf("Password hashed successfully for user: %s", user.Username)
+	log.Printf("Hash da senha realizado com sucesso para usuário: %s", user.Username)
 
 	if err := s.userRepo.Update(user); err != nil {
-		log.Printf("Error updating user password: %v", err)
+		log.Printf("Erro ao atualizar senha do usuário: %v", err)
 		return err
 	}
 
 	// Mark the token as used
 	resetToken.MarkAsUsed()
 	if err := s.passwordResetRepo.Update(resetToken); err != nil {
-		log.Printf("Error marking token as used: %v", err)
+		log.Printf("Erro ao marcar token como usado: %v", err)
 		// Don't fail the operation if we can't mark the token as used
 	}
 
-	log.Printf("Password successfully reset for user: %s", user.Username)
+	log.Printf("Senha redefinida com sucesso para usuário: %s", user.Username)
 	return nil
 }
 
@@ -293,12 +347,16 @@ func (s *authService) generateResetToken() string {
 	return hex.EncodeToString(bytes)
 }
 
-// generateJWT creates a JWT token for the user
+// generateJWT creates a JWT token for the user with configurable expiration
 func (s *authService) generateJWT(userID uuid.UUID) (string, error) {
+	now := time.Now()
+	expirationDuration := time.Duration(s.jwtConfig.ExpirationHours) * time.Hour
+
 	claims := jwt.MapClaims{
 		"user_id": userID.String(),
-		"exp":     time.Now().Add(time.Hour * 24).Unix(), // 24 hours expiration
-		"iat":     time.Now().Unix(),
+		"exp":     now.Add(expirationDuration).Unix(), // Configurável via JWT_EXPIRATION_HOURS
+		"iat":     now.Unix(),
+		"nbf":     now.Unix(), // Not valid before current time
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)

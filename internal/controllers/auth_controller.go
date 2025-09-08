@@ -1,219 +1,267 @@
 package controllers
 
 import (
+	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
-	"github.com/rafabene/avantpro-backend/internal/errors"
-	"github.com/rafabene/avantpro-backend/internal/models"
+	problemErrors "github.com/rafabene/avantpro-backend/internal/errors"
 	"github.com/rafabene/avantpro-backend/internal/services"
 )
 
-// AuthController handles HTTP requests for authentication operations
+// AuthController gerencia requisições HTTP para operações de autenticação
 type AuthController struct {
 	authService services.AuthService
 }
 
-// NewAuthController creates a new AuthController instance
+// Conversion functions
+func (c *AuthController) toServiceLoginRequest(req *ServiceLoginRequest) *services.LoginRequest {
+	return &services.LoginRequest{
+		Email:    req.Email,
+		Password: req.Password,
+	}
+}
+
+func (c *AuthController) toServiceRegisterRequest(req *ServiceRegisterRequest) *services.RegisterRequest {
+	return &services.RegisterRequest{
+		Email:    req.Email,
+		Name:     req.Name,
+		Password: req.Password,
+	}
+}
+
+// NewAuthController cria uma nova instância do AuthController
 func NewAuthController(authService services.AuthService) *AuthController {
 	return &AuthController{authService: authService}
 }
 
-// Login authenticates a user and returns a token
-// @Summary Login user
-// @Description Authenticate user with email and password
+// getUserIDFromContext extrai o ID do usuário do contexto do token JWT
+func (c *AuthController) getUserIDFromContext(ctx *gin.Context) (uuid.UUID, error) {
+	userID, exists := ctx.Get("userID")
+	if !exists {
+		return uuid.Nil, errors.New("usuário não autenticado")
+	}
+
+	userIDUUID, ok := userID.(uuid.UUID)
+	if !ok {
+		return uuid.Nil, errors.New("formato de ID de usuário inválido")
+	}
+
+	return userIDUUID, nil
+}
+
+// Login autentica um usuário e retorna um token
+// @Summary Fazer login do usuário
+// @Description Autentica usuário com email e senha
 // @Tags auth
 // @Accept json
 // @Produce json
-// @Param credentials body models.LoginRequest true "Login credentials"
-// @Success 200 {object} models.LoginResponse
-// @Failure 400 {object} object{type=string,title=string,status=int,detail=string,instance=string} "Bad Request"
-// @Failure 401 {object} object{type=string,title=string,status=int,detail=string,instance=string} "Unauthorized"
-// @Failure 500 {object} object{type=string,title=string,status=int,detail=string,instance=string} "Internal Server Error"
-// @Router /api/v1/auth/login [post]
+// @Param credentials body controllers.LoginRequest true "Credenciais de login"
+// @Success 200 {object} controllers.LoginResponse "Resposta de sucesso com token e informações do usuário"
+// @Failure 400 {object} errors.BadRequestProblem "Requisição inválida"
+// @Failure 401 {object} errors.UnauthorizedProblem "Não autorizado"
+// @Failure 500 {object} errors.InternalServerProblem "Erro interno do servidor"
+// @Router /auth/login [post]
 func (c *AuthController) Login(ctx *gin.Context) {
-	var req models.LoginRequest
+	var req LoginRequest
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		prob := errors.BadRequestError("Invalid JSON format: "+err.Error(), errors.GetInstance(ctx))
-		errors.RespondWithProblem(ctx, prob)
+		prob := problemErrors.BadRequestError("Formato JSON inválido: "+err.Error(), problemErrors.GetInstance(ctx))
+		problemErrors.RespondWithProblem(ctx, prob)
 		return
 	}
 
-	response, err := c.authService.Login(&req)
+	// Obtém informações do cliente para log de segurança
+	clientIP := ctx.ClientIP()
+	userAgent := ctx.GetHeader("User-Agent")
+
+	// Convert to service format
+	modelReq := &ServiceLoginRequest{
+		Email:    req.Email,
+		Password: req.Password,
+	}
+
+	response, err := c.authService.LoginWithContext(c.toServiceLoginRequest(modelReq), clientIP, userAgent)
 	if err != nil {
-		if err.Error() == "invalid credentials" {
-			prob := errors.UnauthorizedError("Invalid email or password", errors.GetInstance(ctx))
-			errors.RespondWithProblem(ctx, prob)
+		if err.Error() == "email ou senha incorretos" {
+			prob := problemErrors.UnauthorizedError("Email ou senha incorretos", problemErrors.GetInstance(ctx))
+			problemErrors.RespondWithProblem(ctx, prob)
 			return
 		}
-		prob := errors.InternalError(errors.GetInstance(ctx))
-		errors.RespondWithProblem(ctx, prob)
+		// Trata erros de bloqueio de conta
+		if strings.Contains(err.Error(), "Conta bloqueada") {
+			prob := problemErrors.UnauthorizedError(err.Error(), problemErrors.GetInstance(ctx))
+			problemErrors.RespondWithProblem(ctx, prob)
+			return
+		}
+		prob := problemErrors.InternalError(problemErrors.GetInstance(ctx))
+		problemErrors.RespondWithProblem(ctx, prob)
 		return
 	}
 
 	ctx.JSON(http.StatusOK, response)
 }
 
-// Register creates a new user account
-// @Summary Register new user
-// @Description Create a new user account
+// Register cria uma nova conta de usuário
+// @Summary Registrar novo usuário
+// @Description Criar uma nova conta de usuário
 // @Tags auth
 // @Accept json
 // @Produce json
-// @Param user body models.RegisterRequest true "Registration data"
-// @Success 201 {object} models.LoginResponse
-// @Failure 400 {object} object{type=string,title=string,status=int,detail=string,instance=string} "Bad Request"
-// @Failure 409 {object} object{type=string,title=string,status=int,detail=string,instance=string} "Conflict"
-// @Failure 500 {object} object{type=string,title=string,status=int,detail=string,instance=string} "Internal Server Error"
-// @Router /api/v1/auth/register [post]
+// @Param user body controllers.RegisterRequest true "Dados de registro"
+// @Success 201 {object} controllers.LoginResponse "Usuário criado com sucesso"
+// @Failure 400 {object} errors.BadRequestProblem "Requisição inválida"
+// @Failure 409 {object} errors.ConflictProblem "Conflito"
+// @Failure 500 {object} errors.InternalServerProblem "Erro interno do servidor"
+// @Router /auth/register [post]
 func (c *AuthController) Register(ctx *gin.Context) {
-	var req models.RegisterRequest
+	var req RegisterRequest
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		prob := errors.BadRequestError("Invalid JSON format: "+err.Error(), errors.GetInstance(ctx))
-		errors.RespondWithProblem(ctx, prob)
+		prob := problemErrors.BadRequestError("Formato JSON inválido: "+err.Error(), problemErrors.GetInstance(ctx))
+		problemErrors.RespondWithProblem(ctx, prob)
 		return
 	}
 
-	response, err := c.authService.Register(&req)
+	// Convert to service format
+	modelReq := &ServiceRegisterRequest{
+		Name:     req.Name,
+		Email:    req.Email,
+		Password: req.Password,
+	}
+
+	response, err := c.authService.Register(c.toServiceRegisterRequest(modelReq))
 	if err != nil {
-		if err.Error() == errors.ErrUsernameAlreadyExists {
-			prob := errors.ConflictError(err.Error(), errors.GetInstance(ctx))
-			errors.RespondWithProblem(ctx, prob)
+		if err.Error() == problemErrors.ErrUsernameAlreadyExists {
+			prob := problemErrors.ConflictError(err.Error(), problemErrors.GetInstance(ctx))
+			problemErrors.RespondWithProblem(ctx, prob)
 			return
 		}
-		prob := errors.ValidationError(err.Error(), errors.GetInstance(ctx))
-		errors.RespondWithProblem(ctx, prob)
+		prob := problemErrors.ValidationError(err.Error(), problemErrors.GetInstance(ctx))
+		problemErrors.RespondWithProblem(ctx, prob)
 		return
 	}
 
 	ctx.JSON(http.StatusCreated, response)
 }
 
-// RequestPasswordReset sends password reset email
-// @Summary Request password reset
-// @Description Send password reset email to user
+// RequestPasswordReset envia email de redefinição de senha
+// @Summary Solicitar redefinição de senha
+// @Description Enviar email de redefinição de senha para o usuário
 // @Tags auth
 // @Accept json
 // @Produce json
-// @Param email body models.PasswordResetRequest true "Email for password reset"
-// @Success 200 {object} models.MessageResponse
-// @Failure 400 {object} object{type=string,title=string,status=int,detail=string,instance=string} "Bad Request"
-// @Failure 404 {object} object{type=string,title=string,status=int,detail=string,instance=string} "Not Found"
-// @Failure 500 {object} object{type=string,title=string,status=int,detail=string,instance=string} "Internal Server Error"
-// @Router /api/v1/auth/password-reset [post]
+// @Param email body controllers.PasswordResetRequest true "Email para redefinição de senha"
+// @Success 200 {object} controllers.MessageResponse "Email de redefinição enviado com sucesso"
+// @Failure 400 {object} errors.BadRequestProblem "Requisição inválida"
+// @Failure 404 {object} errors.NotFoundProblem "Não encontrado"
+// @Failure 500 {object} errors.InternalServerProblem "Erro interno do servidor"
+// @Router /auth/password-reset [post]
 func (c *AuthController) RequestPasswordReset(ctx *gin.Context) {
-	var req models.PasswordResetRequest
+	var req PasswordResetRequest
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		prob := errors.BadRequestError("Invalid JSON format: "+err.Error(), errors.GetInstance(ctx))
-		errors.RespondWithProblem(ctx, prob)
+		prob := problemErrors.BadRequestError("Formato JSON inválido: "+err.Error(), problemErrors.GetInstance(ctx))
+		problemErrors.RespondWithProblem(ctx, prob)
 		return
 	}
 
 	err := c.authService.RequestPasswordReset(req.Email)
 	if err != nil {
-		if err.Error() == errors.ErrUserNotFound {
-			prob := errors.NotFoundError("User", errors.GetInstance(ctx))
-			errors.RespondWithProblem(ctx, prob)
+		if err.Error() == problemErrors.ErrUserNotFound {
+			prob := problemErrors.NotFoundError("Usuário não encontrado", problemErrors.GetInstance(ctx))
+			problemErrors.RespondWithProblem(ctx, prob)
 			return
 		}
-		prob := errors.InternalError(errors.GetInstance(ctx))
-		errors.RespondWithProblem(ctx, prob)
+		prob := problemErrors.InternalError(problemErrors.GetInstance(ctx))
+		problemErrors.RespondWithProblem(ctx, prob)
 		return
 	}
 
-	ctx.JSON(http.StatusOK, models.MessageResponse{
-		Message: "Password reset email sent successfully",
+	ctx.JSON(http.StatusOK, MessageResponse{
+		Message: "Email de redefinição de senha enviado com sucesso",
 	})
 }
 
-// ResetPassword resets user password with token
-// @Summary Reset password
-// @Description Reset user password using reset token
+// ResetPassword redefine a senha do usuário usando token
+// @Summary Redefinir senha
+// @Description Redefinir senha do usuário usando token de redefinição
 // @Tags auth
 // @Accept json
 // @Produce json
-// @Param reset body models.PasswordResetConfirmRequest true "Password reset data"
-// @Success 200 {object} models.MessageResponse
-// @Failure 400 {object} object{type=string,title=string,status=int,detail=string,instance=string} "Bad Request"
-// @Failure 404 {object} object{type=string,title=string,status=int,detail=string,instance=string} "Not Found"
-// @Failure 500 {object} object{type=string,title=string,status=int,detail=string,instance=string} "Internal Server Error"
-// @Router /api/v1/auth/password-reset/confirm [post]
+// @Param reset body controllers.PasswordResetConfirmRequest true "Dados de redefinição de senha"
+// @Success 200 {object} controllers.MessageResponse "Senha redefinida com sucesso"
+// @Failure 400 {object} errors.BadRequestProblem "Requisição inválida"
+// @Failure 404 {object} errors.NotFoundProblem "Não encontrado"
+// @Failure 500 {object} errors.InternalServerProblem "Erro interno do servidor"
+// @Router /auth/password-reset/confirm [post]
 func (c *AuthController) ResetPassword(ctx *gin.Context) {
-	var req models.PasswordResetConfirmRequest
+	var req PasswordResetConfirmRequest
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		prob := errors.BadRequestError("Invalid JSON format: "+err.Error(), errors.GetInstance(ctx))
-		errors.RespondWithProblem(ctx, prob)
+		prob := problemErrors.BadRequestError("Formato JSON inválido: "+err.Error(), problemErrors.GetInstance(ctx))
+		problemErrors.RespondWithProblem(ctx, prob)
 		return
 	}
 
 	err := c.authService.ResetPassword(req.Token, req.NewPassword)
 	if err != nil {
 		if err.Error() == "invalid or expired token" {
-			prob := errors.BadRequestError("Invalid or expired reset token", errors.GetInstance(ctx))
-			errors.RespondWithProblem(ctx, prob)
+			prob := problemErrors.BadRequestError("Token de redefinição inválido ou expirado", problemErrors.GetInstance(ctx))
+			problemErrors.RespondWithProblem(ctx, prob)
 			return
 		}
-		prob := errors.InternalError(errors.GetInstance(ctx))
-		errors.RespondWithProblem(ctx, prob)
+		prob := problemErrors.InternalError(problemErrors.GetInstance(ctx))
+		problemErrors.RespondWithProblem(ctx, prob)
 		return
 	}
 
-	ctx.JSON(http.StatusOK, models.MessageResponse{
-		Message: "Password reset successfully",
+	ctx.JSON(http.StatusOK, MessageResponse{
+		Message: "Senha redefinida com sucesso",
 	})
 }
 
-// UpdateLastSelectedOrganization updates user's last selected organization preference
-// @Summary Update last selected organization
-// @Description Update user's last selected organization preference
+// UpdateLastSelectedOrganization atualiza a preferência da última organização selecionada do usuário
+// @Summary Atualizar última organização selecionada
+// @Description Atualizar preferência da última organização selecionada do usuário
 // @Tags auth
 // @Accept json
 // @Produce json
-// @Param organization body models.UpdateLastSelectedOrganizationRequest true "Organization preference data"
-// @Success 200 {object} models.MessageResponse
-// @Failure 400 {object} object{type=string,title=string,status=int,detail=string,instance=string} "Bad Request"
-// @Failure 401 {object} object{type=string,title=string,status=int,detail=string,instance=string} "Unauthorized"
-// @Failure 500 {object} object{type=string,title=string,status=int,detail=string,instance=string} "Internal Server Error"
-// @Router /api/v1/auth/last-selected-organization [put]
+// @Param organization body controllers.UpdateLastSelectedOrganizationRequest true "Dados de preferência da organização"
+// @Success 200 {object} controllers.MessageResponse "Última organização selecionada atualizada com sucesso"
+// @Failure 400 {object} errors.BadRequestProblem "Requisição inválida"
+// @Failure 401 {object} errors.UnauthorizedProblem "Não autorizado"
+// @Failure 500 {object} errors.InternalServerProblem "Erro interno do servidor"
+// @Router /auth/last-selected-organization [put]
 // @Security Bearer
 func (c *AuthController) UpdateLastSelectedOrganization(ctx *gin.Context) {
-	var req models.UpdateLastSelectedOrganizationRequest
+	var req UpdateLastSelectedOrganizationRequest
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		prob := errors.BadRequestError("Invalid JSON format: "+err.Error(), errors.GetInstance(ctx))
-		errors.RespondWithProblem(ctx, prob)
+		prob := problemErrors.BadRequestError("Formato JSON inválido: "+err.Error(), problemErrors.GetInstance(ctx))
+		problemErrors.RespondWithProblem(ctx, prob)
 		return
 	}
 
-	// Get user ID from context (set by JWT middleware)
-	userIDStr, exists := ctx.Get("user_id")
-	if !exists {
-		prob := errors.UnauthorizedError("User not authenticated", errors.GetInstance(ctx))
-		errors.RespondWithProblem(ctx, prob)
-		return
-	}
-
-	userID, err := uuid.Parse(userIDStr.(string))
+	// Obter ID do usuário do contexto JWT
+	userID, err := c.getUserIDFromContext(ctx)
 	if err != nil {
-		prob := errors.BadRequestError("Invalid user ID", errors.GetInstance(ctx))
-		errors.RespondWithProblem(ctx, prob)
+		prob := problemErrors.ValidationError(err.Error(), problemErrors.GetInstance(ctx))
+		problemErrors.RespondWithProblem(ctx, prob)
 		return
 	}
 
 	err = c.authService.UpdateLastSelectedOrganization(userID, req.OrganizationID)
 	if err != nil {
-		prob := errors.InternalError(errors.GetInstance(ctx))
-		errors.RespondWithProblem(ctx, prob)
+		prob := problemErrors.InternalError(problemErrors.GetInstance(ctx))
+		problemErrors.RespondWithProblem(ctx, prob)
 		return
 	}
 
-	ctx.JSON(http.StatusOK, models.MessageResponse{
-		Message: "Last selected organization updated successfully",
+	ctx.JSON(http.StatusOK, MessageResponse{
+		Message: "Última organização selecionada atualizada com sucesso",
 	})
 }
