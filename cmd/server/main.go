@@ -166,16 +166,12 @@ func main() {
 				organizations.GET("/my", orgController.GetUserOrganizations)
 			}
 
-			// Rotas de organização que requerem validação de associação
-			organizationsWithMembership := protected.Group("/organizations")
-			organizationsWithMembership.Use(middleware.OrganizationMembershipMiddleware(orgService))
-			{
-				organizationsWithMembership.GET("", orgController.GetOrganization)       // Usa header Organization-ID
-				organizationsWithMembership.PUT("", orgController.UpdateOrganization)    // Usa header Organization-ID
-				organizationsWithMembership.DELETE("", orgController.DeleteOrganization) // Usa header Organization-ID
-			}
+			// Rotas de organização que requerem validação de associação (agora via path)
+			organizations.GET("/:orgid", orgController.GetOrganization)       // Orgid via path
+			organizations.PUT("/:orgid", orgController.UpdateOrganization)    // Orgid via path
+			organizations.DELETE("/:orgid", orgController.DeleteOrganization) // Orgid via path
 
-			// Rotas centralizadas de Membros (requerem validação de associação)
+			// Rotas centralizadas de Membros (requerem validação de associação via header)
 			members := protected.Group("/members")
 			members.Use(middleware.OrganizationMembershipMiddleware(orgService))
 			{
@@ -190,7 +186,7 @@ func main() {
 				memberships.GET("", orgController.GetUserMemberships)
 			}
 
-			// Rotas centralizadas de Convites
+			// Rotas centralizadas de Convites (via header)
 			invites := protected.Group("/invites")
 			{
 				// Rotas que requerem validação de associação

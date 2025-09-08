@@ -53,7 +53,22 @@ func NewOrganizationController(service services.OrganizationServiceInterface) *O
 	}
 }
 
-// getOrganizationIDFromHeader extrai e valida o cabeçalho Organization-ID
+// getOrganizationIDFromPath extrai e valida o orgid do path
+func (c *OrganizationController) getOrganizationIDFromPath(ctx *gin.Context) (uuid.UUID, error) {
+	orgIDParam := ctx.Param("orgid")
+	if orgIDParam == "" {
+		return uuid.Nil, errors.New("parâmetro orgid é obrigatório")
+	}
+
+	orgID, err := uuid.Parse(orgIDParam)
+	if err != nil {
+		return uuid.Nil, errors.New("formato de orgid inválido")
+	}
+
+	return orgID, nil
+}
+
+// getOrganizationIDFromHeader extrai e valida o cabeçalho Organization-ID (mantido para compatibilidade)
 func (c *OrganizationController) getOrganizationIDFromHeader(ctx *gin.Context) (uuid.UUID, error) {
 	orgIDHeader := ctx.GetHeader("Organization-ID")
 	if orgIDHeader == "" {
@@ -131,14 +146,14 @@ func (c *OrganizationController) CreateOrganization(ctx *gin.Context) {
 // @Tags organizations
 // @Accept json
 // @Produce json
-// @Param Organization-ID header string true "ID da Organização"
+// @Param orgid path string true "ID da Organização"
 // @Success 200 {object} controllers.OrganizationResponse "Informações da organização"
 // @Failure 400 {object} errors.BadRequestProblem "Requisição inválida"
 // @Failure 404 {object} errors.NotFoundProblem "Organização não encontrada"
 // @Failure 500 {object} errors.InternalServerProblem "Erro interno do servidor"
-// @Router /organizations [get]
+// @Router /organizations/{orgid} [get]
 func (c *OrganizationController) GetOrganization(ctx *gin.Context) {
-	id, err := c.getOrganizationIDFromHeader(ctx)
+	id, err := c.getOrganizationIDFromPath(ctx)
 	if err != nil {
 		problemErrors.HandleValidationError(ctx, err.Error())
 		return
@@ -206,7 +221,7 @@ func (c *OrganizationController) GetUserOrganizations(ctx *gin.Context) {
 // @Tags organizations
 // @Accept json
 // @Produce json
-// @Param Organization-ID header string true "ID da Organização"
+// @Param orgid path string true "ID da Organização"
 // @Param organization body controllers.OrganizationUpdateRequest true "Dados de atualização"
 // @Success 200 {object} controllers.OrganizationResponse "Organização atualizada com sucesso"
 // @Failure 400 {object} errors.BadRequestProblem "Requisição inválida"
@@ -214,9 +229,9 @@ func (c *OrganizationController) GetUserOrganizations(ctx *gin.Context) {
 // @Failure 403 {object} errors.ForbiddenProblem "Permissões insuficientes"
 // @Failure 404 {object} errors.NotFoundProblem "Organização não encontrada"
 // @Failure 500 {object} errors.InternalServerProblem "Erro interno do servidor"
-// @Router /organizations [put]
+// @Router /organizations/{orgid} [put]
 func (c *OrganizationController) UpdateOrganization(ctx *gin.Context) {
-	id, err := c.getOrganizationIDFromHeader(ctx)
+	id, err := c.getOrganizationIDFromPath(ctx)
 	if err != nil {
 		problemErrors.HandleValidationError(ctx, err.Error())
 		return
@@ -267,16 +282,16 @@ func (c *OrganizationController) UpdateOrganization(ctx *gin.Context) {
 // @Tags organizations
 // @Accept json
 // @Produce json
-// @Param Organization-ID header string true "ID da Organização"
+// @Param orgid path string true "ID da Organização"
 // @Success 204 "Organização excluída com sucesso"
 // @Failure 400 {object} errors.BadRequestProblem "Requisição inválida"
 // @Failure 401 {object} errors.UnauthorizedProblem "Não autorizado"
 // @Failure 403 {object} errors.ForbiddenProblem "Permissões insuficientes"
 // @Failure 404 {object} errors.NotFoundProblem "Organização não encontrada"
 // @Failure 500 {object} errors.InternalServerProblem "Erro interno do servidor"
-// @Router /organizations [delete]
+// @Router /organizations/{orgid} [delete]
 func (c *OrganizationController) DeleteOrganization(ctx *gin.Context) {
-	id, err := c.getOrganizationIDFromHeader(ctx)
+	id, err := c.getOrganizationIDFromPath(ctx)
 	if err != nil {
 		problemErrors.HandleValidationError(ctx, err.Error())
 		return
@@ -324,10 +339,9 @@ func (c *OrganizationController) DeleteOrganization(ctx *gin.Context) {
 // @Failure 500 {object} errors.InternalServerProblem "Erro interno do servidor"
 // @Router /members [get]
 func (c *OrganizationController) GetOrganizationMembers(ctx *gin.Context) {
-	idStr := ctx.Param("id")
-	orgID, err := uuid.Parse(idStr)
+	orgID, err := c.getOrganizationIDFromHeader(ctx)
 	if err != nil {
-		problemErrors.HandleValidationError(ctx, "Formato de ID de organização inválido")
+		problemErrors.HandleValidationError(ctx, err.Error())
 		return
 	}
 

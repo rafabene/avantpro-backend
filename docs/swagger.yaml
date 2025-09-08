@@ -1830,14 +1830,48 @@ paths:
       tags:
       - notifications
   /organizations:
+    post:
+      consumes:
+      - application/json
+      description: Criar uma nova organização com o usuário autenticado como administrador
+      parameters:
+      - description: Dados da organização
+        in: body
+        name: organization
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.OrganizationCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Organização criada com sucesso
+          schema:
+            $ref: '#/definitions/controllers.OrganizationResponse'
+        "400":
+          description: Requisição inválida
+          schema:
+            $ref: '#/definitions/errors.BadRequestProblem'
+        "401":
+          description: Não autorizado
+          schema:
+            $ref: '#/definitions/errors.UnauthorizedProblem'
+        "500":
+          description: Erro interno do servidor
+          schema:
+            $ref: '#/definitions/errors.InternalServerProblem'
+      summary: Criar uma nova organização
+      tags:
+      - organizations
+  /organizations/{orgid}:
     delete:
       consumes:
       - application/json
       description: Excluir uma organização (somente criador)
       parameters:
       - description: ID da Organização
-        in: header
-        name: Organization-ID
+        in: path
+        name: orgid
         required: true
         type: string
       produces:
@@ -1874,8 +1908,8 @@ paths:
       description: Obter uma organização específica por seu ID
       parameters:
       - description: ID da Organização
-        in: header
-        name: Organization-ID
+        in: path
+        name: orgid
         required: true
         type: string
       produces:
@@ -1900,47 +1934,14 @@ paths:
       summary: Obter organização por ID
       tags:
       - organizations
-    post:
-      consumes:
-      - application/json
-      description: Criar uma nova organização com o usuário autenticado como administrador
-      parameters:
-      - description: Dados da organização
-        in: body
-        name: organization
-        required: true
-        schema:
-          $ref: '#/definitions/controllers.OrganizationCreateRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Organização criada com sucesso
-          schema:
-            $ref: '#/definitions/controllers.OrganizationResponse'
-        "400":
-          description: Requisição inválida
-          schema:
-            $ref: '#/definitions/errors.BadRequestProblem'
-        "401":
-          description: Não autorizado
-          schema:
-            $ref: '#/definitions/errors.UnauthorizedProblem'
-        "500":
-          description: Erro interno do servidor
-          schema:
-            $ref: '#/definitions/errors.InternalServerProblem'
-      summary: Criar uma nova organização
-      tags:
-      - organizations
     put:
       consumes:
       - application/json
       description: Atualizar uma organização (somente administradores)
       parameters:
       - description: ID da Organização
-        in: header
-        name: Organization-ID
+        in: path
+        name: orgid
         required: true
         type: string
       - description: Dados de atualização

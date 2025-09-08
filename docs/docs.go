@@ -1739,123 +1739,6 @@ const docTemplate = `{
             }
         },
         "/organizations": {
-            "get": {
-                "description": "Obter uma organização específica por seu ID",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "organizations"
-                ],
-                "summary": "Obter organização por ID",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "ID da Organização",
-                        "name": "Organization-ID",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Informações da organização",
-                        "schema": {
-                            "$ref": "#/definitions/controllers.OrganizationResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Requisição inválida",
-                        "schema": {
-                            "$ref": "#/definitions/errors.BadRequestProblem"
-                        }
-                    },
-                    "404": {
-                        "description": "Organização não encontrada",
-                        "schema": {
-                            "$ref": "#/definitions/errors.NotFoundProblem"
-                        }
-                    },
-                    "500": {
-                        "description": "Erro interno do servidor",
-                        "schema": {
-                            "$ref": "#/definitions/errors.InternalServerProblem"
-                        }
-                    }
-                }
-            },
-            "put": {
-                "description": "Atualizar uma organização (somente administradores)",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "organizations"
-                ],
-                "summary": "Atualizar organização",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "ID da Organização",
-                        "name": "Organization-ID",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "description": "Dados de atualização",
-                        "name": "organization",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/controllers.OrganizationUpdateRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Organização atualizada com sucesso",
-                        "schema": {
-                            "$ref": "#/definitions/controllers.OrganizationResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Requisição inválida",
-                        "schema": {
-                            "$ref": "#/definitions/errors.BadRequestProblem"
-                        }
-                    },
-                    "401": {
-                        "description": "Não autorizado",
-                        "schema": {
-                            "$ref": "#/definitions/errors.UnauthorizedProblem"
-                        }
-                    },
-                    "403": {
-                        "description": "Permissões insuficientes",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ForbiddenProblem"
-                        }
-                    },
-                    "404": {
-                        "description": "Organização não encontrada",
-                        "schema": {
-                            "$ref": "#/definitions/errors.NotFoundProblem"
-                        }
-                    },
-                    "500": {
-                        "description": "Erro interno do servidor",
-                        "schema": {
-                            "$ref": "#/definitions/errors.InternalServerProblem"
-                        }
-                    }
-                }
-            },
             "post": {
                 "description": "Criar uma nova organização com o usuário autenticado como administrador",
                 "consumes": [
@@ -1896,63 +1779,6 @@ const docTemplate = `{
                         "description": "Não autorizado",
                         "schema": {
                             "$ref": "#/definitions/errors.UnauthorizedProblem"
-                        }
-                    },
-                    "500": {
-                        "description": "Erro interno do servidor",
-                        "schema": {
-                            "$ref": "#/definitions/errors.InternalServerProblem"
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "description": "Excluir uma organização (somente criador)",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "organizations"
-                ],
-                "summary": "Excluir organização",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "ID da Organização",
-                        "name": "Organization-ID",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "Organização excluída com sucesso"
-                    },
-                    "400": {
-                        "description": "Requisição inválida",
-                        "schema": {
-                            "$ref": "#/definitions/errors.BadRequestProblem"
-                        }
-                    },
-                    "401": {
-                        "description": "Não autorizado",
-                        "schema": {
-                            "$ref": "#/definitions/errors.UnauthorizedProblem"
-                        }
-                    },
-                    "403": {
-                        "description": "Permissões insuficientes",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ForbiddenProblem"
-                        }
-                    },
-                    "404": {
-                        "description": "Organização não encontrada",
-                        "schema": {
-                            "$ref": "#/definitions/errors.NotFoundProblem"
                         }
                     },
                     "500": {
@@ -2024,6 +1850,182 @@ const docTemplate = `{
                         "description": "Não autorizado",
                         "schema": {
                             "$ref": "#/definitions/errors.UnauthorizedProblem"
+                        }
+                    },
+                    "500": {
+                        "description": "Erro interno do servidor",
+                        "schema": {
+                            "$ref": "#/definitions/errors.InternalServerProblem"
+                        }
+                    }
+                }
+            }
+        },
+        "/organizations/{orgid}": {
+            "get": {
+                "description": "Obter uma organização específica por seu ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "organizations"
+                ],
+                "summary": "Obter organização por ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID da Organização",
+                        "name": "orgid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Informações da organização",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.OrganizationResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Requisição inválida",
+                        "schema": {
+                            "$ref": "#/definitions/errors.BadRequestProblem"
+                        }
+                    },
+                    "404": {
+                        "description": "Organização não encontrada",
+                        "schema": {
+                            "$ref": "#/definitions/errors.NotFoundProblem"
+                        }
+                    },
+                    "500": {
+                        "description": "Erro interno do servidor",
+                        "schema": {
+                            "$ref": "#/definitions/errors.InternalServerProblem"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Atualizar uma organização (somente administradores)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "organizations"
+                ],
+                "summary": "Atualizar organização",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID da Organização",
+                        "name": "orgid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Dados de atualização",
+                        "name": "organization",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.OrganizationUpdateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Organização atualizada com sucesso",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.OrganizationResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Requisição inválida",
+                        "schema": {
+                            "$ref": "#/definitions/errors.BadRequestProblem"
+                        }
+                    },
+                    "401": {
+                        "description": "Não autorizado",
+                        "schema": {
+                            "$ref": "#/definitions/errors.UnauthorizedProblem"
+                        }
+                    },
+                    "403": {
+                        "description": "Permissões insuficientes",
+                        "schema": {
+                            "$ref": "#/definitions/errors.ForbiddenProblem"
+                        }
+                    },
+                    "404": {
+                        "description": "Organização não encontrada",
+                        "schema": {
+                            "$ref": "#/definitions/errors.NotFoundProblem"
+                        }
+                    },
+                    "500": {
+                        "description": "Erro interno do servidor",
+                        "schema": {
+                            "$ref": "#/definitions/errors.InternalServerProblem"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Excluir uma organização (somente criador)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "organizations"
+                ],
+                "summary": "Excluir organização",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID da Organização",
+                        "name": "orgid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Organização excluída com sucesso"
+                    },
+                    "400": {
+                        "description": "Requisição inválida",
+                        "schema": {
+                            "$ref": "#/definitions/errors.BadRequestProblem"
+                        }
+                    },
+                    "401": {
+                        "description": "Não autorizado",
+                        "schema": {
+                            "$ref": "#/definitions/errors.UnauthorizedProblem"
+                        }
+                    },
+                    "403": {
+                        "description": "Permissões insuficientes",
+                        "schema": {
+                            "$ref": "#/definitions/errors.ForbiddenProblem"
+                        }
+                    },
+                    "404": {
+                        "description": "Organização não encontrada",
+                        "schema": {
+                            "$ref": "#/definitions/errors.NotFoundProblem"
                         }
                     },
                     "500": {
