@@ -3,7 +3,6 @@ package controllers
 import (
 	"errors"
 	"net/http"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -86,13 +85,13 @@ func (c *AuthController) Login(ctx *gin.Context) {
 
 	response, err := c.authService.LoginWithContext(c.toServiceLoginRequest(modelReq), clientIP, userAgent)
 	if err != nil {
-		if err.Error() == "email ou senha incorretos" {
+		if errors.Is(err, services.ErrInvalidCredentials) {
 			prob := problemErrors.UnauthorizedError("Email ou senha incorretos", problemErrors.GetInstance(ctx))
 			problemErrors.RespondWithProblem(ctx, prob)
 			return
 		}
 		// Trata erros de bloqueio de conta
-		if strings.Contains(err.Error(), "Conta bloqueada") {
+		if errors.Is(err, services.ErrAccountLocked) {
 			prob := problemErrors.UnauthorizedError(err.Error(), problemErrors.GetInstance(ctx))
 			problemErrors.RespondWithProblem(ctx, prob)
 			return
@@ -135,8 +134,8 @@ func (c *AuthController) Register(ctx *gin.Context) {
 
 	response, err := c.authService.Register(c.toServiceRegisterRequest(modelReq))
 	if err != nil {
-		if err.Error() == problemErrors.ErrUsernameAlreadyExists {
-			prob := problemErrors.ConflictError(err.Error(), problemErrors.GetInstance(ctx))
+		if errors.Is(err, services.ErrUserAlreadyExists) {
+			prob := problemErrors.ConflictError("Usuário já existe", problemErrors.GetInstance(ctx))
 			problemErrors.RespondWithProblem(ctx, prob)
 			return
 		}
@@ -203,8 +202,13 @@ func (c *AuthController) ResetPassword(ctx *gin.Context) {
 
 	err := c.authService.ResetPassword(req.Token, req.NewPassword)
 	if err != nil {
-		if err.Error() == "invalid or expired token" {
+		if errors.Is(err, services.ErrTokenInvalidOrExpired) {
 			prob := problemErrors.BadRequestError("Token de redefinição inválido ou expirado", problemErrors.GetInstance(ctx))
+			problemErrors.RespondWithProblem(ctx, prob)
+			return
+		}
+		if errors.Is(err, services.ErrInvalidPassword) {
+			prob := problemErrors.BadRequestError(err.Error(), problemErrors.GetInstance(ctx))
 			problemErrors.RespondWithProblem(ctx, prob)
 			return
 		}

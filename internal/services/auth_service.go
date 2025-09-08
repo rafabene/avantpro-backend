@@ -3,7 +3,6 @@ package services
 import (
 	"crypto/rand"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"log"
 	"time"
@@ -108,14 +107,14 @@ func (s *authService) LoginWithContext(req *LoginRequest, ipAddress, userAgent s
 	user, err := s.userRepo.GetByUsername(req.Email)
 	if err != nil {
 		log.Printf("Tentativa de login para usuário inexistente: %s do IP: %s", req.Email, ipAddress)
-		return nil, errors.New("email ou senha incorretos")
+		return nil, ErrInvalidCredentials
 	}
 
 	// Check if account is locked
 	if user.IsLocked() {
 		remaining := user.GetRemainingLockTime()
 		log.Printf("Tentativa de login bloqueada para usuário bloqueado: %s do IP: %s, tempo restante de bloqueio: %v", user.Username, ipAddress, remaining.Truncate(time.Second))
-		return nil, fmt.Errorf("Conta bloqueada devido a muitas tentativas de login falhadas. Tente novamente em %v", remaining.Truncate(time.Second))
+		return nil, fmt.Errorf("%w: Conta bloqueada devido a muitas tentativas de login falhadas. Tente novamente em %v", ErrAccountLocked, remaining.Truncate(time.Second))
 	}
 
 	// Check password
@@ -135,7 +134,7 @@ func (s *authService) LoginWithContext(req *LoginRequest, ipAddress, userAgent s
 			log.Printf("Erro ao atualizar usuário após login falhado: %v", err)
 		}
 
-		return nil, errors.New("email ou senha incorretos")
+		return nil, ErrInvalidCredentials
 	}
 
 	// Clear failed attempts on successful login
@@ -188,7 +187,7 @@ func (s *authService) Register(req *RegisterRequest) (*LoginResponse, error) {
 	// Check if user already exists
 	existingUser, _ := s.userRepo.GetByUsername(req.Email)
 	if existingUser != nil {
-		return nil, errors.New("Usuário já existe")
+		return nil, ErrUserAlreadyExists
 	}
 
 	// Create user
@@ -282,7 +281,7 @@ func (s *authService) RequestPasswordReset(email string) error {
 // ResetPassword resets user password using a token
 func (s *authService) ResetPassword(token, newPassword string) error {
 	if token == "" {
-		return errors.New("token inválido ou expirado")
+		return ErrTokenInvalidOrExpired
 	}
 
 	// Validate new password using a temporary struct
@@ -293,7 +292,7 @@ func (s *authService) ResetPassword(token, newPassword string) error {
 	}
 
 	if err := s.validator.Struct(&resetReq); err != nil {
-		return fmt.Errorf("senha inválida: %w", err)
+		return fmt.Errorf("%w: %v", ErrInvalidPassword, err)
 	}
 
 	// Get the token from database
@@ -301,23 +300,23 @@ func (s *authService) ResetPassword(token, newPassword string) error {
 	resetToken, err := s.passwordResetRepo.GetByToken(token)
 	if err != nil {
 		log.Printf("Erro ao buscar token de reset: %v", err)
-		return err
+		return ErrTokenInvalidOrExpired
 	}
 	if resetToken == nil {
 		log.Printf("Token de reset não encontrado no banco de dados")
-		return errors.New("token inválido ou expirado")
+		return ErrTokenInvalidOrExpired
 	}
 	log.Printf("Token de reset encontrado, UserID: %s, ExpiresAt: %s", resetToken.UserID, resetToken.ExpiresAt)
 
 	// Validate the token
 	if !resetToken.IsValid() {
 		if resetToken.IsExpired() {
-			return errors.New("token expirado")
+			return ErrTokenInvalidOrExpired
 		}
 		if resetToken.IsUsed() {
-			return errors.New("token já foi utilizado")
+			return ErrTokenInvalidOrExpired
 		}
-		return errors.New("token inválido")
+		return ErrTokenInvalidOrExpired
 	}
 
 	// Get the user
@@ -326,7 +325,7 @@ func (s *authService) ResetPassword(token, newPassword string) error {
 		return err
 	}
 	if user == nil {
-		return errors.New("usuário não encontrado")
+		return ErrUserNotFound
 	}
 
 	// Update the user's password

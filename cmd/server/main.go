@@ -103,11 +103,11 @@ func main() {
 	router.Use(gin.Recovery())
 
 	// Middleware CORS
-	config := cors.DefaultConfig()
-	config.AllowOrigins = []string{"http://localhost:4200", "http://localhost:4201"}
-	config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
-	config.AllowHeaders = []string{"Origin", "Content-Type", "Accept", "Authorization", "User-ID"}
-	router.Use(cors.New(config))
+	corsConfig := cors.DefaultConfig()
+	corsConfig.AllowOrigins = cfg.CORS.AllowOrigins
+	corsConfig.AllowMethods = cfg.CORS.AllowMethods
+	corsConfig.AllowHeaders = cfg.CORS.AllowHeaders
+	router.Use(cors.New(corsConfig))
 
 	// Configurar proxies confiáveis
 	if err := router.SetTrustedProxies(cfg.Server.TrustedProxies); err != nil {

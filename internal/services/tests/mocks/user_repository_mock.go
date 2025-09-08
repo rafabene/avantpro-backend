@@ -13,8 +13,9 @@ import (
 	reflect "reflect"
 
 	uuid "github.com/google/uuid"
-	models "github.com/rafabene/avantpro-backend/internal/models"
 	gomock "go.uber.org/mock/gomock"
+
+	models "github.com/rafabene/avantpro-backend/internal/models"
 )
 
 // MockUserRepository is a mock of UserRepository interface.

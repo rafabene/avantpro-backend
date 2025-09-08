@@ -22,6 +22,7 @@ type Config struct {
 	Database    DatabaseConfig // Configurações do banco de dados
 	JWT         JWTConfig      // Configurações do JWT
 	Auth        AuthConfig     // Configurações de autenticação
+	CORS        CORSConfig     // Configurações de CORS
 }
 
 // JWTConfig contém configurações relacionadas ao JWT
@@ -54,6 +55,13 @@ type DatabaseConfig struct {
 	SSLMode  string // Modo SSL para conexão
 }
 
+// CORSConfig contém configurações de CORS
+type CORSConfig struct {
+	AllowOrigins []string // Lista de origens permitidas
+	AllowMethods []string // Métodos HTTP permitidos
+	AllowHeaders []string // Headers permitidos
+}
+
 // LoadConfig carrega todas as configurações a partir das variáveis de ambiente
 func LoadConfig() *Config {
 	env := getEnvironment()
@@ -81,6 +89,11 @@ func LoadConfig() *Config {
 		Auth: AuthConfig{
 			MaxLoginAttempts:       getIntWithDefault("MAX_LOGIN_ATTEMPTS", 3),
 			AccountLockoutDuration: time.Duration(getIntWithDefault("ACCOUNT_LOCKOUT_DURATION_MINUTES", 15)) * time.Minute,
+		},
+		CORS: CORSConfig{
+			AllowOrigins: getCORSOrigins(),
+			AllowMethods: getCORSMethods(),
+			AllowHeaders: getCORSHeaders(),
 		},
 	}
 
@@ -149,6 +162,48 @@ func getTrustedProxies() []string {
 		proxy = strings.TrimSpace(proxy)
 		if proxy != "" {
 			result = append(result, proxy)
+		}
+	}
+	return result
+}
+
+// getCORSOrigins obtém a lista de origens permitidas para CORS
+func getCORSOrigins() []string {
+	origins := getEnvWithDefault("CORS_ALLOW_ORIGINS", "http://localhost:4200,http://localhost:4201")
+
+	var result []string
+	for _, origin := range strings.Split(origins, ",") {
+		origin = strings.TrimSpace(origin)
+		if origin != "" {
+			result = append(result, origin)
+		}
+	}
+	return result
+}
+
+// getCORSMethods obtém a lista de métodos HTTP permitidos para CORS
+func getCORSMethods() []string {
+	methods := getEnvWithDefault("CORS_ALLOW_METHODS", "GET,POST,PUT,DELETE,OPTIONS")
+
+	var result []string
+	for _, method := range strings.Split(methods, ",") {
+		method = strings.TrimSpace(method)
+		if method != "" {
+			result = append(result, method)
+		}
+	}
+	return result
+}
+
+// getCORSHeaders obtém a lista de headers permitidos para CORS
+func getCORSHeaders() []string {
+	headers := getEnvWithDefault("CORS_ALLOW_HEADERS", "Origin,Content-Type,Accept,Authorization,User-ID,Organization-ID")
+
+	var result []string
+	for _, header := range strings.Split(headers, ",") {
+		header = strings.TrimSpace(header)
+		if header != "" {
+			result = append(result, header)
 		}
 	}
 	return result

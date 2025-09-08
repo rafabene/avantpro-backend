@@ -168,7 +168,7 @@ var _ = Describe("Testes de Integração do AuthService", func() {
 				response, err := authService.Register(registerRequest)
 
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("Usuário já existe"))
+				Expect(errors.Is(err, services.ErrUserAlreadyExists)).To(BeTrue())
 				Expect(response).To(BeNil())
 			})
 		})
@@ -314,7 +314,7 @@ var _ = Describe("Testes de Integração do AuthService", func() {
 
 				response, err := authService.LoginWithContext(loginRequest, "192.168.1.1", "test-agent")
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("email ou senha incorretos"))
+				Expect(errors.Is(err, services.ErrInvalidCredentials)).To(BeTrue())
 				Expect(response).To(BeNil())
 
 				// Attempt 2
@@ -327,7 +327,7 @@ var _ = Describe("Testes de Integração do AuthService", func() {
 
 				response, err = authService.LoginWithContext(loginRequest, "192.168.1.1", "test-agent")
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("email ou senha incorretos"))
+				Expect(errors.Is(err, services.ErrInvalidCredentials)).To(BeTrue())
 				Expect(response).To(BeNil())
 
 				// Attempt 3 - should lock account
@@ -343,7 +343,7 @@ var _ = Describe("Testes de Integração do AuthService", func() {
 
 				response, err = authService.LoginWithContext(loginRequest, "192.168.1.1", "test-agent")
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("email ou senha incorretos"))
+				Expect(errors.Is(err, services.ErrInvalidCredentials)).To(BeTrue())
 				Expect(response).To(BeNil())
 			})
 
@@ -523,7 +523,7 @@ var _ = Describe("Testes de Integração do AuthService", func() {
 
 				response, err := authService.LoginWithContext(loginRequest, "192.168.1.1", "test-agent")
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("email ou senha incorretos"))
+				Expect(errors.Is(err, services.ErrInvalidCredentials)).To(BeTrue())
 				Expect(response).To(BeNil())
 			})
 		})
@@ -856,6 +856,69 @@ var _ = Describe("Testes de Integração do AuthService", func() {
 
 				err := authService.ResetPassword(token, "NewSecurePass123!")
 				Expect(err).To(HaveOccurred())
+			})
+
+			It("deve retornar mensagem de erro consistente para token não encontrado", func() {
+				token := "nonexistent-token"
+
+				mockPasswordRepo.EXPECT().
+					GetByToken(token).
+					Return(nil, errors.New("token not found"))
+
+				err := authService.ResetPassword(token, "NewSecurePass123!")
+				Expect(err).To(HaveOccurred())
+				Expect(errors.Is(err, services.ErrTokenInvalidOrExpired)).To(BeTrue())
+			})
+
+			It("deve retornar mensagem de erro consistente para token usado", func() {
+				userID := uuid.New()
+				token := "used-token"
+				newPassword := "NewSecurePass123!"
+
+				// Create a used token
+				usedTime := time.Now().Add(-time.Hour)
+				usedToken := &models.PasswordResetToken{
+					ID:        uuid.New(),
+					UserID:    userID,
+					Token:     token,
+					ExpiresAt: time.Now().Add(time.Hour), // Still valid time-wise
+					UsedAt:    &usedTime,                 // But already used
+					CreatedAt: time.Now().Add(-2 * time.Hour),
+					UpdatedAt: time.Now().Add(-time.Hour),
+				}
+
+				mockPasswordRepo.EXPECT().
+					GetByToken(token).
+					Return(usedToken, nil)
+
+				err := authService.ResetPassword(token, newPassword)
+				Expect(err).To(HaveOccurred())
+				Expect(errors.Is(err, services.ErrTokenInvalidOrExpired)).To(BeTrue())
+			})
+
+			It("deve retornar mensagem de erro consistente para token expirado", func() {
+				userID := uuid.New()
+				token := "expired-token"
+				newPassword := "NewSecurePass123!"
+
+				// Create an expired token
+				expiredToken := &models.PasswordResetToken{
+					ID:        uuid.New(),
+					UserID:    userID,
+					Token:     token,
+					ExpiresAt: time.Now().Add(-time.Hour), // Expired
+					UsedAt:    nil,                        // Not used
+					CreatedAt: time.Now().Add(-2 * time.Hour),
+					UpdatedAt: time.Now().Add(-2 * time.Hour),
+				}
+
+				mockPasswordRepo.EXPECT().
+					GetByToken(token).
+					Return(expiredToken, nil)
+
+				err := authService.ResetPassword(token, newPassword)
+				Expect(err).To(HaveOccurred())
+				Expect(errors.Is(err, services.ErrTokenInvalidOrExpired)).To(BeTrue())
 			})
 		})
 	})

@@ -10,11 +10,11 @@ import (
 
 // User representa uma entidade de usuário
 type User struct {
-	ID                         uuid.UUID  `gorm:"type:char(36);primaryKey"`
+	ID                         uuid.UUID  `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
 	Username                   string     `gorm:"uniqueIndex;not null"`
 	Name                       string     `gorm:"not null"`
 	Password                   string     `gorm:"not null"`
-	LastSelectedOrganizationID *uuid.UUID `gorm:"type:char(36)"`
+	LastSelectedOrganizationID *uuid.UUID `gorm:"type:uuid"`
 	FailedLoginAttempts        int        `gorm:"default:0"`
 	LastFailedLoginAt          *time.Time
 	LockedUntil                *time.Time
@@ -26,8 +26,8 @@ type User struct {
 
 // Profile representa o perfil de um usuário com informações de endereço
 type Profile struct {
-	ID        uuid.UUID `gorm:"type:char(36);primaryKey"`
-	UserID    uuid.UUID `gorm:"type:char(36);not null;uniqueIndex"`
+	ID        uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	UserID    uuid.UUID `gorm:"type:uuid;not null;uniqueIndex"`
 	Street    string    `gorm:"not null"`
 	City      string    `gorm:"not null"`
 	District  string    `gorm:"not null"`

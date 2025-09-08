@@ -170,12 +170,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/errors.BadRequestProblem"
                         }
                     },
-                    "404": {
-                        "description": "Não encontrado",
-                        "schema": {
-                            "$ref": "#/definitions/errors.NotFoundProblem"
-                        }
-                    },
                     "500": {
                         "description": "Erro interno do servidor",
                         "schema": {
