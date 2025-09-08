@@ -8,6 +8,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 
@@ -76,6 +77,7 @@ type authService struct {
 	jwtSecret         string                               // Secret key for JWT token signing and validation
 	authConfig        *config.AuthConfig                   // Authentication configuration
 	jwtConfig         *config.JWTConfig                    // JWT configuration for token expiration
+	validator         *validator.Validate                  // Validator for input validation
 }
 
 // NewAuthService creates a new AuthService instance.
@@ -96,6 +98,7 @@ func NewAuthService(userRepo repositories.UserRepository, passwordResetRepo repo
 		jwtSecret:         jwtSecret,
 		authConfig:        authConfig,
 		jwtConfig:         jwtConfig,
+		validator:         validator.New(),
 	}
 }
 
@@ -177,6 +180,11 @@ func (s *authService) LoginWithContext(req *LoginRequest, ipAddress, userAgent s
 
 // Register creates a new user account and returns a JWT token
 func (s *authService) Register(req *RegisterRequest) (*LoginResponse, error) {
+	// Validate request
+	if err := s.validator.Struct(req); err != nil {
+		return nil, fmt.Errorf("dados inválidos: %w", err)
+	}
+
 	// Check if user already exists
 	existingUser, _ := s.userRepo.GetByUsername(req.Email)
 	if existingUser != nil {
@@ -274,6 +282,17 @@ func (s *authService) ResetPassword(token, newPassword string) error {
 		return errors.New("token inválido ou expirado")
 	}
 
+	// Validate new password using a temporary struct
+	resetReq := struct {
+		NewPassword string `validate:"required,min=8,containsany=ABCDEFGHIJKLMNOPQRSTUVWXYZ,containsany=abcdefghijklmnopqrstuvwxyz,containsany=0123456789,containsany=!@#$%^&*()"`
+	}{
+		NewPassword: newPassword,
+	}
+	
+	if err := s.validator.Struct(&resetReq); err != nil {
+		return fmt.Errorf("senha inválida: %w", err)
+	}
+
 	// Get the token from database
 	log.Printf("Buscando token de reset: %s", token)
 	resetToken, err := s.passwordResetRepo.GetByToken(token)
@@ -316,7 +335,8 @@ func (s *authService) ResetPassword(token, newPassword string) error {
 	}
 	log.Printf("Hash da senha realizado com sucesso para usuário: %s", user.Username)
 
-	if err := s.userRepo.Update(user); err != nil {
+	// Use a more specific update to avoid INSERT behavior
+	if err := s.userRepo.UpdatePassword(user.ID, user.Password); err != nil {
 		log.Printf("Erro ao atualizar senha do usuário: %v", err)
 		return err
 	}

@@ -2625,7 +2625,6 @@
             "properties": {
                 "new_password": {
                     "type": "string",
-                    "minLength": 8,
                     "example": "NewSecurePass123!"
                 },
                 "token": {
@@ -2706,7 +2705,6 @@
                 },
                 "password": {
                     "type": "string",
-                    "minLength": 8,
                     "example": "SecurePass123!"
                 }
             }

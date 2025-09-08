@@ -64,7 +64,7 @@ var _ = Describe("Testes de Integração do AuthService", func() {
 				registerRequest := &services.RegisterRequest{
 					Email:    "test@example.com",
 					Name:     "Test User",
-					Password: "password123",
+					Password: "SecurePass123!",
 				}
 
 				// Mock expectations
@@ -91,7 +91,7 @@ var _ = Describe("Testes de Integração do AuthService", func() {
 				registerRequest := &services.RegisterRequest{
 					Email:    "test@example.com",
 					Name:     "Test User",
-					Password: "plainpassword",
+					Password: "SecurePass123!",
 				}
 
 				// Mock expectations
@@ -103,7 +103,7 @@ var _ = Describe("Testes de Integração do AuthService", func() {
 					user.UpdatedAt = time.Now()
 
 					// Verify password was NOT hashed yet
-					Expect(user.Password).To(Equal("plainpassword"))
+					Expect(user.Password).To(Equal("SecurePass123!"))
 
 					// Hash the password (simulating GORM hook)
 					err := user.HashPassword()
@@ -112,7 +112,7 @@ var _ = Describe("Testes de Integração do AuthService", func() {
 					}
 
 					// Verify password was hashed after GORM hook
-					Expect(user.Password).ToNot(Equal("plainpassword"))
+					Expect(user.Password).ToNot(Equal("SecurePass123!"))
 					Expect(len(user.Password)).To(BeNumerically(">", 10))
 					return nil
 				})
@@ -125,7 +125,7 @@ var _ = Describe("Testes de Integração do AuthService", func() {
 				registerRequest := &services.RegisterRequest{
 					Email:    "test@example.com",
 					Name:     "Test User",
-					Password: "password123",
+					Password: "SecurePass123!",
 				}
 
 				// Mock expectations
@@ -159,7 +159,7 @@ var _ = Describe("Testes de Integração do AuthService", func() {
 				registerRequest := &services.RegisterRequest{
 					Email:    "existing@example.com",
 					Name:     "Test User",
-					Password: "password123",
+					Password: "SecurePass123!",
 				}
 
 				// Mock expectations - user already exists
@@ -174,59 +174,43 @@ var _ = Describe("Testes de Integração do AuthService", func() {
 		})
 
 		Context("com casos extremos", func() {
-			It("deve lidar com email vazio", func() {
+			It("deve rejeitar email vazio", func() {
 				registerRequest := &services.RegisterRequest{
 					Email:    "",
 					Name:     "Test User",
-					Password: "password123",
+					Password: "SecurePass123!",
 				}
 
-				// Mock expectations
-				mockUserRepo.EXPECT().GetByUsername("").Return(nil, errors.New("user not found"))
-				mockUserRepo.EXPECT().Create(gomock.Any()).DoAndReturn(func(user *models.User) error {
-					// Simulate GORM BeforeCreate hook - generate UUID and hash password
-					user.ID = uuid.New()
-					user.CreatedAt = time.Now()
-					user.UpdatedAt = time.Now()
-					return user.HashPassword()
-				})
-
+				// Não precisamos de mocks porque a validação vai falhar antes
 				response, err := authService.Register(registerRequest)
 
-				Expect(err).ToNot(HaveOccurred())
-				Expect(response).ToNot(BeNil())
-				Expect(response.User.Username).To(Equal(""))
+				// Email vazio DEVE resultar em erro de validação
+				Expect(err).To(HaveOccurred())
+				Expect(response).To(BeNil())
+				Expect(err.Error()).To(ContainSubstring("dados inválidos"))
 			})
 
-			It("deve lidar com nome vazio", func() {
+			It("deve rejeitar nome vazio", func() {
 				registerRequest := &services.RegisterRequest{
 					Email:    "test@example.com",
 					Name:     "",
-					Password: "password123",
+					Password: "SecurePass123!",
 				}
 
-				// Mock expectations
-				mockUserRepo.EXPECT().GetByUsername("test@example.com").Return(nil, errors.New("user not found"))
-				mockUserRepo.EXPECT().Create(gomock.Any()).DoAndReturn(func(user *models.User) error {
-					// Simulate GORM BeforeCreate hook - generate UUID and hash password
-					user.ID = uuid.New()
-					user.CreatedAt = time.Now()
-					user.UpdatedAt = time.Now()
-					return user.HashPassword()
-				})
-
+				// Não precisamos de mocks porque a validação vai falhar antes
 				response, err := authService.Register(registerRequest)
 
-				Expect(err).ToNot(HaveOccurred())
-				Expect(response).ToNot(BeNil())
-				Expect(response.User.Name).To(Equal(""))
+				// Nome vazio DEVE resultar em erro de validação
+				Expect(err).To(HaveOccurred())
+				Expect(response).To(BeNil())
+				Expect(err.Error()).To(ContainSubstring("dados inválidos"))
 			})
 
 			It("deve lidar com senha de tamanho mínimo", func() {
 				registerRequest := &services.RegisterRequest{
 					Email:    "test@example.com",
 					Name:     "Test User",
-					Password: "123456",
+					Password: "SecurePass123!",
 				}
 
 				// Mock expectations
@@ -252,7 +236,7 @@ var _ = Describe("Testes de Integração do AuthService", func() {
 			registerRequest := &services.RegisterRequest{
 				Email:    "fullflow@example.com",
 				Name:     "Full Flow User",
-				Password: "securepassword123",
+				Password: "SecurePass123!",
 			}
 
 			var createdUser *models.User
@@ -284,7 +268,7 @@ var _ = Describe("Testes de Integração do AuthService", func() {
 			Expect(createdUser.Name).To(Equal("Full Flow User"))
 
 			By("verificando se a senha foi hasheada")
-			Expect(createdUser.Password).ToNot(Equal("securepassword123"))
+			Expect(createdUser.Password).ToNot(Equal("SecurePass123!"))
 
 			By("verificando se a resposta contém dados corretos do usuário")
 			Expect(response.User.Username).To(Equal("fullflow@example.com"))
@@ -307,7 +291,7 @@ var _ = Describe("Testes de Integração do AuthService", func() {
 				Name:     "Lock Test User",
 			}
 			// Hash the password manually since we're not using real GORM
-			testUser.Password = "correctpassword"
+			testUser.Password = "CorrectPass123!"
 			err := testUser.HashPassword()
 			Expect(err).ToNot(HaveOccurred())
 		})
@@ -316,7 +300,7 @@ var _ = Describe("Testes de Integração do AuthService", func() {
 			It("deve bloquear conta após máximo de tentativas", func() {
 				loginRequest := &services.LoginRequest{
 					Email:    "locktest@example.com",
-					Password: "wrongpassword",
+					Password: "WrongPass123!",
 				}
 
 				// Mock expectations for 3 failed login attempts
@@ -377,7 +361,7 @@ var _ = Describe("Testes de Integração do AuthService", func() {
 				// Try to login with correct password
 				loginRequest := &services.LoginRequest{
 					Email:    "locktest@example.com",
-					Password: "correctpassword",
+					Password: "CorrectPass123!",
 				}
 
 				// Mock expectations - return locked user
@@ -393,7 +377,7 @@ var _ = Describe("Testes de Integração do AuthService", func() {
 				// Try to login with correct password
 				loginRequest := &services.LoginRequest{
 					Email:    "locktest@example.com",
-					Password: "correctpassword",
+					Password: "CorrectPass123!",
 				}
 
 				// Mock expectations for successful login
@@ -426,7 +410,7 @@ var _ = Describe("Testes de Integração do AuthService", func() {
 				// Login with correct password
 				loginRequest := &services.LoginRequest{
 					Email:    "locktest@example.com",
-					Password: "correctpassword",
+					Password: "CorrectPass123!",
 				}
 
 				// Mock expectations for successful login that resets failed attempts
@@ -461,7 +445,7 @@ var _ = Describe("Testes de Integração do AuthService", func() {
 				// Try to login with correct password
 				loginRequest := &services.LoginRequest{
 					Email:    "locktest@example.com",
-					Password: "correctpassword",
+					Password: "CorrectPass123!",
 				}
 
 				// Mock expectations for successful login after lockout expires
@@ -497,7 +481,7 @@ var _ = Describe("Testes de Integração do AuthService", func() {
 
 				loginRequest := &services.LoginRequest{
 					Email:    "locktest@example.com",
-					Password: "wrongpassword",
+					Password: "WrongPass123!",
 				}
 
 				// Mock expectations for 2 failed login attempts (custom config)
@@ -531,7 +515,7 @@ var _ = Describe("Testes de Integração do AuthService", func() {
 			It("deve retornar erro de credenciais inválidas", func() {
 				loginRequest := &services.LoginRequest{
 					Email:    "nonexistent@example.com",
-					Password: "anypassword",
+					Password: "AnyPassword123!",
 				}
 
 				// Mock expectations - user not found
@@ -630,11 +614,11 @@ var _ = Describe("Testes de Integração do AuthService", func() {
 		Context("com política de senha forte", func() {
 			It("deve rejeitar senhas que não atendem aos critérios de segurança", func() {
 				weakPasswords := []string{
-					"123456",      // Muito simples
+					"123456",      // Muito simples (menos de 8 chars)
 					"password",    // Sem números/maiúsculas/símbolos
 					"PASSWORD",    // Sem minúsculas/números/símbolos
 					"Password123", // Sem símbolos
-					"Pass123!",    // Muito curta (menos de 8 chars)
+					"Pass1!",      // Muito curta (menos de 8 chars)
 				}
 
 				for _, weakPassword := range weakPasswords {
@@ -646,41 +630,25 @@ var _ = Describe("Testes de Integração do AuthService", func() {
 
 					By(fmt.Sprintf("testando senha fraca: %s", weakPassword))
 
-					// Como estamos testando validação, o erro pode vir do validator
-					// ou do service - vamos testar que senhas fracas falham de alguma forma
-
-					// Mock expectations - usuário não existe
-					mockUserRepo.EXPECT().GetByUsername("weak-pass-test@example.com").Return(nil, errors.New("user not found"))
-
-					// Se a validação passar (não deveria), mock create
-					mockUserRepo.EXPECT().Create(gomock.Any()).DoAndReturn(func(user *models.User) error {
-						// Se chegou aqui, a validação não funcionou corretamente
-						// Mas o hash vai falhar para senhas muito fracas
-						user.ID = uuid.New()
-						user.CreatedAt = time.Now()
-						user.UpdatedAt = time.Now()
-						return user.HashPassword()
-					}).AnyTimes()
-
+					// Agora a validação está no service, então senhas fracas devem falhar
+					// Não precisamos de mocks para usuário que não existe ou create
+					// porque a validação vai falhar antes
+					
 					response, err := authService.Register(registerRequest)
 
-					// Senha fraca deve resultar em erro ou falha na validação
-					// Como o validator está no nível do controller, aqui testamos
-					// que o serviço funciona, mas senhas fracas podem passar
-					// A validação real acontece no controller
-					if err == nil && response != nil {
-						// Se passou, pelo menos verificamos que o token foi gerado
-						Expect(response.Token).ToNot(BeEmpty())
-					}
+					// Senha fraca DEVE resultar em erro de validação
+					Expect(err).To(HaveOccurred())
+					Expect(response).To(BeNil())
+					Expect(err.Error()).To(ContainSubstring("dados inválidos"))
 				}
 			})
 
 			It("deve aceitar senhas que atendem aos critérios de segurança", func() {
 				strongPasswords := []string{
 					"SecurePass123!",
-					"MyStr0ng@Password",
-					"C0mpl3x#P@ssw0rd",
-					"S3cur3P@ssw0rd!",
+					"MyStr0ng*Password",
+					"C0mpl3x&P4ssw0rd",
+					"S3cur3P4ssw0rd!",
 				}
 
 				for i, strongPassword := range strongPasswords {
@@ -709,6 +677,185 @@ var _ = Describe("Testes de Integração do AuthService", func() {
 					Expect(response.Token).ToNot(BeEmpty())
 					Expect(response.User.Username).To(Equal(email))
 				}
+			})
+		})
+	})
+
+	Describe("Funcionalidade de Reset de Senha", func() {
+		Context("quando usuário faz reset de senha com token válido", func() {
+			It("deve atualizar a senha usando UpdatePassword ao invés de Update completo", func() {
+				email := "resettest@example.com"
+				newPassword := "NewSecurePassword123!"
+				userID := uuid.New()
+				token := "valid-reset-token"
+
+				// Mock user retrieval for password reset request
+				existingUser := &models.User{
+					ID:       userID,
+					Username: email,
+					Name:     "Reset Test User",
+					Password: "old-hashed-password",
+				}
+
+				// Mock password reset token
+				resetToken := &models.PasswordResetToken{
+					UserID:    userID,
+					Token:     token,
+					ExpiresAt: time.Now().Add(time.Hour),
+				}
+
+				// Setup expectations for password reset request
+				mockUserRepo.EXPECT().
+					GetByUsername(email).
+					Return(existingUser, nil)
+
+				mockPasswordRepo.EXPECT().
+					DeleteUserTokens(userID).
+					Return(nil)
+
+				mockPasswordRepo.EXPECT().
+					Create(gomock.Any()).
+					DoAndReturn(func(tokenRecord *models.PasswordResetToken) error {
+						tokenRecord.ID = uuid.New()
+						tokenRecord.CreatedAt = time.Now()
+						tokenRecord.UpdatedAt = time.Now()
+						return nil
+					})
+
+				// Setup expectations for password reset confirmation
+				mockPasswordRepo.EXPECT().
+					GetByToken(token).
+					Return(resetToken, nil)
+
+				mockUserRepo.EXPECT().
+					GetByID(userID).
+					Return(existingUser, nil)
+
+				// CRITICAL: Expect UpdatePassword to be called, not Update
+				mockUserRepo.EXPECT().
+					UpdatePassword(userID, gomock.Any()).
+					DoAndReturn(func(id uuid.UUID, hashedPassword string) error {
+						// Verify that the password is actually hashed
+						Expect(hashedPassword).ToNot(Equal(newPassword))
+						Expect(len(hashedPassword)).To(BeNumerically(">", 50)) // bcrypt hashes are typically 60+ chars
+						Expect(hashedPassword).To(HavePrefix("$2a$"))          // bcrypt prefix
+						return nil
+					})
+
+				mockPasswordRepo.EXPECT().
+					Update(gomock.Any()).
+					Return(nil)
+
+				// Request password reset
+				err := authService.RequestPasswordReset(email)
+				Expect(err).ToNot(HaveOccurred())
+
+				// Reset password with token
+				err = authService.ResetPassword(token, newPassword)
+				Expect(err).ToNot(HaveOccurred())
+			})
+
+			It("deve falhar se UpdatePassword retornar erro", func() {
+				email := "resettest@example.com"
+				newPassword := "NewSecurePassword123!"
+				userID := uuid.New()
+				token := "valid-reset-token"
+
+				// Mock user and token
+				existingUser := &models.User{
+					ID:       userID,
+					Username: email,
+					Name:     "Reset Test User",
+					Password: "old-hashed-password",
+				}
+
+				resetToken := &models.PasswordResetToken{
+					UserID:    userID,
+					Token:     token,
+					ExpiresAt: time.Now().Add(time.Hour),
+				}
+
+				// Setup expectations
+				mockPasswordRepo.EXPECT().
+					GetByToken(token).
+					Return(resetToken, nil)
+
+				mockUserRepo.EXPECT().
+					GetByID(userID).
+					Return(existingUser, nil)
+
+				// Mock UpdatePassword to return an error
+				mockUserRepo.EXPECT().
+					UpdatePassword(userID, gomock.Any()).
+					Return(errors.New("database error"))
+
+				// Reset password should fail
+				err := authService.ResetPassword(token, newPassword)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("database error"))
+			})
+
+			It("deve garantir que o hash da senha seja diferente da senha original", func() {
+				email := "resettest@example.com"
+				newPassword := "NewSecurePassword123!"
+				userID := uuid.New()
+				token := "valid-reset-token"
+
+				existingUser := &models.User{
+					ID:       userID,
+					Username: email,
+					Name:     "Reset Test User",
+					Password: "old-hashed-password",
+				}
+
+				resetToken := &models.PasswordResetToken{
+					UserID:    userID,
+					Token:     token,
+					ExpiresAt: time.Now().Add(time.Hour),
+				}
+
+				mockPasswordRepo.EXPECT().
+					GetByToken(token).
+					Return(resetToken, nil)
+
+				mockUserRepo.EXPECT().
+					GetByID(userID).
+					Return(existingUser, nil)
+
+				var capturedHashedPassword string
+				mockUserRepo.EXPECT().
+					UpdatePassword(userID, gomock.Any()).
+					DoAndReturn(func(id uuid.UUID, hashedPassword string) error {
+						capturedHashedPassword = hashedPassword
+						return nil
+					})
+
+				mockPasswordRepo.EXPECT().
+					Update(gomock.Any()).
+					Return(nil)
+
+				// Reset password
+				err := authService.ResetPassword(token, newPassword)
+				Expect(err).ToNot(HaveOccurred())
+
+				// Verify password was properly hashed
+				Expect(capturedHashedPassword).ToNot(Equal(newPassword))
+				Expect(capturedHashedPassword).ToNot(Equal("old-hashed-password"))
+				Expect(len(capturedHashedPassword)).To(BeNumerically(">", 50))
+				Expect(capturedHashedPassword).To(HavePrefix("$2a$"))
+			})
+		})
+
+		Context("quando token é inválido ou expirado", func() {
+			It("deve retornar erro apropriado", func() {
+				token := "invalid-token"
+
+				mockPasswordRepo.EXPECT().
+					GetByToken(token).
+					Return(nil, errors.New("token not found"))
+
+				err := authService.ResetPassword(token, "NewSecurePass123!")
+				Expect(err).To(HaveOccurred())
 			})
 		})
 	})

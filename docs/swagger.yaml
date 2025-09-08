@@ -411,7 +411,6 @@ definitions:
     properties:
       new_password:
         example: NewSecurePass123!
-        minLength: 8
         type: string
       token:
         example: reset-token-123
@@ -470,7 +469,6 @@ definitions:
         type: string
       password:
         example: SecurePass123!
-        minLength: 8
         type: string
     required:
     - email

@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Essential Commands
 
 ### Development Workflow
-- `make all` - Complete development workflow: clean, deps, tidy, swagger, build
+- `make all` - Complete development workflow: clean, deps, tidy, swagger, test, build
 - `make dev` - Start development server with hot reload using Air
 - `make run` - Run the application directly with go run
 - `make install-tools` - Install all development tools (swag, golangci-lint, air, goimports)
@@ -15,147 +15,194 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `make lint` - Run golangci-lint
 - `make fix-imports` - Organize imports with goimports using local prefix
 - `make swagger` - Generate Swagger documentation
+- `make test` - Run tests with Ginkgo framework and mock generation
 
 ### Database
 - `make db/setup` - Start PostgreSQL container for development
 - `make db/teardown` - Stop and remove PostgreSQL container
 - `make db/shell` - Connect to PostgreSQL shell
+- `make db/populate-test` - Clear tables and create test data with user rafabene@gmail.com/123456
 
 ## Architecture Overview
 
-### Three-Layer Architecture
-The codebase follows a clean three-layer architecture pattern:
+### Strict Layer Isolation Architecture
+The codebase implements a sophisticated three-layer architecture with **complete layer isolation**:
 
 **Controllers → Services → Repositories**
 
-- **Controllers** (`internal/controllers/`): Handle HTTP requests, validate input, convert between DTOs and domain models
-- **Services** (`internal/services/`): Business logic, validation, coordinate between repositories
-- **Repositories** (`internal/repositories/`): Data access layer, database operations using GORM
+#### Layer Isolation Implementation
+**Critical Pattern**: Each layer has its own type definitions and cannot import model types from other layers:
+
+- **Repository Layer** (`internal/models/`): Contains domain models used only by repositories, includes GORM hooks and business logic methods
+- **Service Layer** (`internal/services/`): 
+  - `types.go`: Centralized shared type definitions across services
+  - `*_models.go`: Service-specific DTOs per service with no imports from other layers
+- **Controller Layer** (`internal/controllers/`):
+  - `types.go`: Centralized shared type definitions across controllers 
+  - `*_models.go`: Controller-specific DTOs with Swagger annotations and no imports from other layers
+
+#### Type Conversion Between Layers
+Each controller implements conversion functions to bridge layer boundaries:
+```go
+// Example conversion pattern in controllers
+func (c *AuthController) toServiceLoginRequest(req *ServiceLoginRequest) *services.LoginRequest {
+    return &services.LoginRequest{
+        Email:    req.Email,
+        Password: req.Password,
+    }
+}
+```
 
 ### Key Design Patterns
 
-**Dependency Injection**: Each layer depends on interfaces, not concrete implementations. Controllers depend on service interfaces, services depend on repository interfaces.
+**Complete Layer Isolation**: No cross-package imports for model types. Controllers cannot import `models` or `services` types; services cannot import `models` types.
+
+**Type Conversion at Boundaries**: Conversion functions in each layer transform types when calling other layers, maintaining strict isolation.
 
 **Interface-First Design**: All major components define interfaces that are implemented by concrete types. Repository and service interfaces are fully documented.
 
-**Domain Models vs DTOs**: Clear separation between internal domain models (`models.User`, `models.Profile`, `models.Organization`) and API request/response DTOs for authentication and organizations.
+**Domain Models vs DTOs**: Clear separation between internal domain models (`models.User`) with GORM hooks and API DTOs (`controllers.UserResponse`) with Swagger annotations.
 
-**Password Security**: All user passwords are automatically encrypted using bcrypt with GORM hooks. The `Password` field is never returned in API responses.
+### Core Features
 
-**Sorting and Pagination**: All list endpoints support sorting with `sortBy` and `sortOrder` parameters. Repository layer validates allowed fields to prevent SQL injection.
+#### Authentication & Authorization
+- **JWT Authentication**: Token-based auth with configurable expiration and refresh
+- **Password Security**: bcrypt encryption with GORM hooks for automatic hashing
+- **Account Lockout**: Configurable failed login attempts with IP-based lockout
+- **Password Reset**: Token-based password reset flow
 
-### Error Handling
-Uses RFC 7807 Problem Details for HTTP APIs via the `moogar0880/problems` library. Custom error handling in `internal/errors/problems.go` with specific error types for validation, not found, conflict, and internal errors.
+#### Organization Management System
+Complete multi-tenant organization system:
+- **Organization CRUD**: Create, read, update, delete with role-based permissions
+- **Member Management**: Admin/user roles with role-based access control
+- **Invitation System**: Email-based invitations with expiration and token acceptance
+- **Permission Hierarchy**: Creator always admin, role-based feature access
 
+#### Notification System
+Organization-scoped notification preferences:
+- **Real-time Notifications**: WebSocket-based notification delivery
+- **Organization Preferences**: Notification settings per organization (not per user)
+- **Event Types**: Member actions, invitation events, organization updates
+- **Test Notifications**: Generate test notifications for preference validation
 
-## API Features
+### Data Architecture
 
-### Organization Management
-The API provides complete organization management with the following features:
+#### Database Design
+- **PostgreSQL** with GORM ORM and UUID primary keys using `gen_random_uuid()`
+- **Soft Deletes**: GORM DeletedAt for user and profile data
+- **AutoMigrate**: Automatic schema management with UUID extension setup
+- **Foreign Key Relationships**: Properly cascaded relationships between entities
 
-- **Organization CRUD**: Create, read, update, delete with proper permissions
-- **Member Management**: Add/remove members, role management (admin/user)
-- **Invitation System**: Email-based invitations with token acceptance
-- **Permission System**: Creator always admin, role-based access control
+#### Security Implementation
+- **SQL Injection Prevention**: Repository layer validates sorting fields with whitelists
+- **Trusted Proxies**: Environment-based proxy configuration for production
+- **Input Validation**: Comprehensive validation using go-playground/validator
+- **RFC 7807 Error Handling**: Standardized problem details for HTTP APIs
 
-### Data Models
-- **User**: Contains username (email), name, encrypted password, and optional profile
-- **Profile**: Contains complete address (street, city, district, zip_code) and phone number
-- **Validation**: Comprehensive validation using go-playground/validator
-- **Security**: Passwords are automatically hashed using bcrypt before saving
+### Testing Strategy
 
-### Sorting Implementation
-List endpoints support sorting with query parameters:
-- `sortBy`: Field name (name, username, createdAt, updatedAt)
-- `sortOrder`: Direction (asc, desc, defaults to desc)
-- Automatic field validation and SQL injection prevention
-- CamelCase to snake_case normalization (createdAt → created_at)
-- Default sorting: created_at DESC
+#### Testcontainers Integration
+- **Real PostgreSQL**: Tests run against actual PostgreSQL instances via testcontainers
+- **Automatic Fallback**: Tests skip when Docker is unavailable
+- **Mock Generation**: Automatic mock generation for repository interfaces using mockgen
+- **Ginkgo Framework**: BDD-style testing with comprehensive integration tests
 
-### Example Usage
-```
-# Create organization
-POST /api/v1/organizations
-Authorization: Bearer <JWT_TOKEN>
-{
-  "name": "My Organization",
-  "description": "Organization description"
-}
+#### Test Organization
+- **Integration Tests**: Full service layer tests with real database
+- **Repository Tests**: Data layer tests with testcontainers
+- **Mock-based Tests**: Service tests with mocked repositories
+- **19 Test Specs**: Comprehensive coverage including authentication, security, and business logic
 
-# Get organization details
-GET /api/v1/organizations
-Authorization: Bearer <JWT_TOKEN>
-Organization-ID: <ORGANIZATION_UUID>
+## Business Logic Patterns
 
-# Invite user to organization
-POST /api/v1/organizations/invites
-Authorization: Bearer <JWT_TOKEN>
-Organization-ID: <ORGANIZATION_UUID>
-{
-  "email": "user@example.com",
-  "role": "user"
-}
+### Authentication Flow
+1. **Registration**: Create user account with optional profile, automatic password hashing
+2. **Login**: JWT token generation with user data and security logging
+3. **Account Lockout**: IP-based lockout after configurable failed attempts
+4. **Password Reset**: Token-based reset with expiration validation
 
-# List user organizations
-GET /api/v1/organizations/my?page=1&limit=10
-Authorization: Bearer <JWT_TOKEN>
+### Organization Multi-tenancy
+1. **Creation**: User creates organization, becomes admin automatically
+2. **Member Management**: Admins invite users via email tokens
+3. **Invitation Flow**: Email token → user acceptance → member creation
+4. **Role Management**: Creator cannot be removed, admins manage organization
 
-# Get organization notification preferences
-GET /api/v1/organizations/notification-preferences
-Authorization: Bearer <JWT_TOKEN>
-Organization-ID: <ORGANIZATION_UUID>
-```
+### Notification Preferences
+1. **Organization-Scoped**: Preferences stored per organization, not per user
+2. **Event-Based**: Different notification types for various organization events
+3. **Real-time Delivery**: WebSocket-based notification broadcasting
+4. **Bulk Operations**: Mass preference updates with validation
 
-### Configuration
-Environment-based configuration in `internal/config/` supports development and production modes with different database connection pools, logging levels, Gin modes, and trusted proxy configuration.
-
-### Security Features
-- **Password Encryption**: All passwords automatically encrypted with bcrypt using GORM hooks
-- **Trusted Proxies**: Gin router configured with environment-based proxy trust
-  - Development: No trusted proxies for security (`SetTrustedProxies(nil)`)
-  - Production: Configurable via `TRUSTED_PROXIES` environment variable
-- **SQL Injection Prevention**: Repository layer validates sorting fields with whitelist
-- **RFC 7807 Error Handling**: Standardized error responses
-- **Input Validation**: Comprehensive validation using struct tags and go-playground/validator
-
-### Database
-- **PostgreSQL** with GORM ORM
-- **UUID Primary Keys** using PostgreSQL's `gen_random_uuid()`
-- **Foreign Key Relationships** between User and Profile with cascade options
-- **Soft Deletes** via GORM's DeletedAt for both User and Profile
-- **AutoMigrate** used throughout for schema management
-
-### API Documentation
-Swagger/OpenAPI documentation generated automatically from code annotations using swaggo/swag. Access at `/swagger/index.html` in development mode.
-
-## Project Structure Notes
-
-### Internal Package Organization
-- `cmd/server/` - Application entry point with dependency wiring
-- `internal/config/` - Environment-based configuration management
-- `internal/database/` - Database connection and migration utilities with UUID support
-- `internal/errors/` - RFC 7807 error handling and validation formatting
-- `internal/models/` - User and Profile domain models with encrypted password support
-- `internal/repositories/` - User repository with GetByUsername method
-- `internal/services/` - User service with comprehensive validation and business logic
-- `internal/controllers/` - HTTP controllers for auth and organization management
+## Configuration & Environment
 
 ### Environment Variables
-The application uses godotenv for development and supports these key variables:
-- `ENV` - "development" or "production"
-- `PORT` - Server port (default: 8080)
-- `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` - Database configuration
-- `TRUSTED_PROXIES` - Comma-separated list of trusted proxy IPs for production
+Required configuration in `.env`:
+- `ENV`: "development" or "production" (affects Swagger availability)
+- `PORT`: Server port (default: 8080)
+- `DB_*`: PostgreSQL connection parameters
+- `JWT_SECRET`: **Critical to change in production**
+- `JWT_EXPIRES_IN`: Token expiration duration
+- `TRUSTED_PROXIES`: Production proxy IPs
 
-### Import Organization
-Use `goimports` with local prefix `github.com/rafabene/avantpro-backend` to organize imports correctly.
+### Security Configuration
+- **Development Mode**: Swagger UI available, no trusted proxies
+- **Production Mode**: Swagger disabled, configurable trusted proxies
+- **CORS**: Configured for `http://localhost:4200` (adjust for production)
+- **Database SSL**: Use `DB_SSLMODE=require` in production
+
+## API Documentation & Usage
+
+### Swagger Integration
+- **Automatic Generation**: Documentation generated from code annotations
+- **Development Access**: Available at `/swagger/index.html` in development mode
+- **Type Safety**: All controller DTOs fully documented with examples
+
+### Header Requirements
+- **Authorization**: `Bearer <JWT_TOKEN>` for authenticated endpoints
+- **Organization-ID**: Required for organization-scoped operations
+- **User-ID**: Automatically injected by middleware from JWT
+
+### Example Usage Patterns
+```bash
+# Organization-scoped operations require Organization-ID header
+curl -H "Authorization: Bearer <token>" \
+     -H "Organization-ID: <uuid>" \
+     http://localhost:8080/api/v1/organizations/members
+
+# Pagination and sorting support
+curl "http://localhost:8080/api/v1/organizations/my?page=1&limit=10&sortBy=name&sortOrder=asc"
+```
+
+## Development Guidelines
+
+### Code Quality Requirements
+- **Mandatory Testing**: Always run `make test` and `make check` after modifications
+- **Layer Isolation**: Never create cross-layer imports for model types
+- **Import Organization**: Use `goimports` with local prefix `github.com/rafabene/avantpro-backend`
+- **Type Conversions**: Implement conversion functions at layer boundaries
+
+### Architecture Constraints
+- **No Cross-Layer Imports**: Controllers cannot import `models` or `services` types
+- **Service Isolation**: Services cannot import `models` types
+- **Repository Domain**: Only repositories use domain models from `models` package
+- **Interface Dependencies**: All layers depend on interfaces, not concrete implementations
 
 ### Key Business Rules
-- **Username is Email**: The username field must be a valid email address
-- **Password Minimum Length**: Passwords must be at least 6 characters
-- **Unique Usernames**: Email addresses must be unique across all users
-- **Profile is Optional**: Users can be created without a profile initially
-- **Address Validation**: When profile is provided, all address fields are required
-- **Phone Normalization**: Phone numbers are normalized by removing formatting characters
-- **Case Sensitivity**: Usernames are stored and searched in lowercase
+- **Username as Email**: Username field must be valid email address
+- **Multi-tenant Design**: Application is organization-scoped for all business operations
+- **Creator Privileges**: Organization creator always has admin role and cannot be removed
+- **Notification Scope**: Preferences are organization-level, not user-level
+- **Password Policy**: Enforced minimum requirements with bcrypt encryption
 
+## Development Workflow Notes
+
+### Hot Reload Development
+- Server runs continuously with `make dev` using Air
+- Automatic Swagger generation on startup
+- No need to restart server for code changes
+
+### Database Management
+- PostgreSQL container management via Docker
+- Test data population with known credentials
+- Automatic schema migration via GORM AutoMigrate
+- SQL scripts for data management in `sql/` directory

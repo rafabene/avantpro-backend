@@ -142,3 +142,17 @@ func (mr *MockUserRepositoryMockRecorder) UpdateLastSelectedOrganization(userID,
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateLastSelectedOrganization", reflect.TypeOf((*MockUserRepository)(nil).UpdateLastSelectedOrganization), userID, organizationID)
 }
+
+// UpdatePassword mocks base method.
+func (m *MockUserRepository) UpdatePassword(userID uuid.UUID, hashedPassword string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdatePassword", userID, hashedPassword)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdatePassword indicates an expected call of UpdatePassword.
+func (mr *MockUserRepositoryMockRecorder) UpdatePassword(userID, hashedPassword any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdatePassword", reflect.TypeOf((*MockUserRepository)(nil).UpdatePassword), userID, hashedPassword)
+}

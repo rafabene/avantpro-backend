@@ -2631,7 +2631,6 @@ const docTemplate = `{
             "properties": {
                 "new_password": {
                     "type": "string",
-                    "minLength": 8,
                     "example": "NewSecurePass123!"
                 },
                 "token": {
@@ -2712,7 +2711,6 @@ const docTemplate = `{
                 },
                 "password": {
                     "type": "string",
-                    "minLength": 8,
                     "example": "SecurePass123!"
                 }
             }

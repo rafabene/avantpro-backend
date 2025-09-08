@@ -31,6 +31,9 @@ type UserRepository interface {
 
 	// UpdateLastSelectedOrganization updates the user's last selected organization
 	UpdateLastSelectedOrganization(userID uuid.UUID, organizationID *uuid.UUID) error
+
+	// UpdatePassword updates only the password field for a specific user
+	UpdatePassword(userID uuid.UUID, hashedPassword string) error
 }
 
 // userRepository implements the UserRepository interface
@@ -117,4 +120,9 @@ func (r *userRepository) Delete(id uuid.UUID) error {
 // UpdateLastSelectedOrganization updates the user's last selected organization
 func (r *userRepository) UpdateLastSelectedOrganization(userID uuid.UUID, organizationID *uuid.UUID) error {
 	return r.db.Model(&models.User{}).Where("id = ?", userID).Update("last_selected_organization_id", organizationID).Error
+}
+
+// UpdatePassword updates only the password field for a specific user
+func (r *userRepository) UpdatePassword(userID uuid.UUID, hashedPassword string) error {
+	return r.db.Model(&models.User{}).Where("id = ?", userID).Update("password", hashedPassword).Error
 }

@@ -43,7 +43,7 @@ type LoginRequest struct {
 type RegisterRequest struct {
 	Email    string `json:"email" validate:"required,email" example:"user@example.com"`
 	Name     string `json:"name" validate:"required,min=2,max=100" example:"John Doe"`
-	Password string `json:"password" validate:"required,min=8,containsany=ABCDEFGHIJKLMNOPQRSTUVWXYZ,containsany=abcdefghijklmnopqrstuvwxyz,containsany=0123456789,containsany=!@#$%^&*()_+-=[]{}|;:,.<>?" example:"SecurePass123!"`
+	Password string `json:"password" validate:"required" example:"SecurePass123!"`
 }
 
 // LoginResponse representa o corpo da resposta para login bem-sucedido
@@ -63,7 +63,7 @@ type PasswordResetRequest struct {
 // @Description Requisição de confirmação de redefinição de senha
 type PasswordResetConfirmRequest struct {
 	Token       string `json:"token" validate:"required" example:"reset-token-123"`
-	NewPassword string `json:"new_password" validate:"required,min=8,containsany=ABCDEFGHIJKLMNOPQRSTUVWXYZ,containsany=abcdefghijklmnopqrstuvwxyz,containsany=0123456789,containsany=!@#$%^&*()_+-=[]{}|;:,.<>?" example:"NewSecurePass123!"`
+	NewPassword string `json:"new_password" validate:"required" example:"NewSecurePass123!"`
 }
 
 // MessageResponse representa uma resposta de mensagem simples
