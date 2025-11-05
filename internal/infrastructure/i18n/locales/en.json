@@ -1,0 +1,33 @@
+{
+  "welcome": "Welcome, {{.Name}}!",
+  "user_created": "User created successfully",
+  "password_changed": "Password changed successfully",
+  "email_sent": "Email sent to {{.Email}}",
+
+  "validation_required": "{{.Field}} is required",
+  "validation_email": "{{.Field}} must be a valid email address",
+  "validation_min": "{{.Field}} must be at least {{.Min}} characters",
+  "validation_max": "{{.Field}} must be at most {{.Max}} characters",
+  "validation_cpf": "{{.Field}} must be a valid CPF",
+
+  "error.user_not_found": "User not found",
+  "error.email_already_exists": "Email already in use",
+  "error.invalid_credentials": "Invalid email or password",
+  "error.unauthorized": "Unauthorized access",
+  "error.forbidden": "You don't have permission to access this resource",
+  "error.invalid_email": "Invalid email format",
+  "error.invalid_cpf": "Invalid CPF",
+
+  "error.validation.title": "Validation Failed",
+  "error.validation.detail": "One or more fields failed validation",
+  "error.not_found.title": "Resource Not Found",
+  "error.not_found.detail": "{{.Resource}} not found",
+  "error.conflict.title": "Resource Conflict",
+  "error.conflict.email_exists": "The email address is already registered",
+  "error.unauthorized.title": "Unauthorized",
+  "error.unauthorized.detail": "Authentication is required to access this resource",
+  "error.forbidden.title": "Forbidden",
+  "error.forbidden.detail": "You don't have permission to access this resource",
+  "error.internal.title": "Internal Server Error",
+  "error.internal.detail": "An unexpected error occurred while processing your request"
+}

@@ -1,0 +1,33 @@
+{
+  "welcome": "Bem-vindo, {{.Name}}!",
+  "user_created": "Usuário criado com sucesso",
+  "password_changed": "Senha alterada com sucesso",
+  "email_sent": "Email enviado para {{.Email}}",
+
+  "validation_required": "{{.Field}} é obrigatório",
+  "validation_email": "{{.Field}} deve ser um email válido",
+  "validation_min": "{{.Field}} deve ter pelo menos {{.Min}} caracteres",
+  "validation_max": "{{.Field}} deve ter no máximo {{.Max}} caracteres",
+  "validation_cpf": "{{.Field}} deve ser um CPF válido",
+
+  "error.user_not_found": "Usuário não encontrado",
+  "error.email_already_exists": "Email já está em uso",
+  "error.invalid_credentials": "Email ou senha inválidos",
+  "error.unauthorized": "Acesso não autorizado",
+  "error.forbidden": "Você não tem permissão para acessar este recurso",
+  "error.invalid_email": "Formato de email inválido",
+  "error.invalid_cpf": "CPF inválido",
+
+  "error.validation.title": "Erro de Validação",
+  "error.validation.detail": "Um ou mais campos falharam na validação",
+  "error.not_found.title": "Recurso Não Encontrado",
+  "error.not_found.detail": "{{.Resource}} não encontrado",
+  "error.conflict.title": "Conflito de Recurso",
+  "error.conflict.email_exists": "O endereço de email já está registrado",
+  "error.unauthorized.title": "Não Autorizado",
+  "error.unauthorized.detail": "Autenticação é necessária para acessar este recurso",
+  "error.forbidden.title": "Proibido",
+  "error.forbidden.detail": "Você não tem permissão para acessar este recurso",
+  "error.internal.title": "Erro Interno do Servidor",
+  "error.internal.detail": "Ocorreu um erro inesperado ao processar sua requisição"
+}
