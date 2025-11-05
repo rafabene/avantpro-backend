@@ -146,12 +146,18 @@ Este projeto segue **Clean Architecture** com as seguintes camadas:
 
 ## 📚 Documentação
 
-- [Arquitetura](specs/00-arquitetura-backend-go.md)
-- [Autenticação](specs/01-autenticacao-autorizacao.md)
-- [Validação e i18n](specs/02-validacao-i18n.md)
-- [Testes](specs/03-testes.md)
-- [Migrations](specs/04-migrations-database.md)
-- [Ferramentas](specs/05-ferramentas-desenvolvimento.md)
+**Requisitos Funcionais** (O QUE o sistema faz):
+- [Autenticação e Autorização](specs/functional/auth.md)
+
+**Especificações Técnicas** (COMO funciona):
+- [Arquitetura](specs/technical/architecture.md)
+- [Segurança (JWT/OAuth2)](specs/technical/security.md)
+- [Database & Migrations](specs/technical/database.md)
+- [Validação e i18n](specs/technical/validation-i18n.md)
+- [Testes](specs/technical/testing.md)
+
+**Guias de Desenvolvimento**:
+- [Ferramentas](specs/development/tooling.md)
 
 ## 🤝 Contribuindo
 
