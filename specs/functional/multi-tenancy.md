@@ -251,138 +251,70 @@ Content-Type: application/json
 }
 ```
 
-### 2.4 Implementação do Fluxo de Login
+### 2.4 Lógica de Negócio do Fluxo de Login
 
-**Service Layer**:
-```go
-// AuthService.Login - Autenticação inicial
-func (s *AuthService) Login(ctx context.Context, email, password string) (*LoginResponse, error) {
-    // 1. Validar credenciais
-    user, err := s.userRepo.FindByEmail(ctx, email)
-    if err != nil || !s.validatePassword(user, password) {
-        return nil, errors.New("invalid_credentials")
-    }
+**Cenário A: Usuário com 1 Organization**
 
-    // 2. Buscar organizations do usuário
-    members, err := s.organizationMemberRepo.FindByUserID(ctx, user.ID)
-    if err != nil {
-        return nil, err
-    }
-
-    if len(members) == 0 {
-        return nil, errors.New("user_has_no_organizations")
-    }
-
-    // 3. Caso 1 organization: gerar JWT final direto
-    if len(members) == 1 {
-        member := members[0]
-        accessToken, _ := s.generateAccessToken(user, member.OrganizationID, member.Role)
-        refreshToken, _ := s.generateRefreshToken(user, member.OrganizationID)
-
-        return &LoginResponse{
-            AccessToken:  accessToken,
-            RefreshToken: refreshToken,
-            Organization: toOrganizationInfo(member),
-        }, nil
-    }
-
-    // 4. Múltiplas organizations: gerar token temporário
-    tempToken, _ := s.generateTempToken(user)
-
-    return &LoginResponse{
-        RequiresOrganizationSelection: true,
-        TempToken:                      tempToken,
-        Organizations:                  toOrganizationInfoList(members),
-    }, nil
-}
-
-// AuthService.SelectOrganization - Seleção de organization
-func (s *AuthService) SelectOrganization(ctx context.Context, tempToken, organizationID string) (*TokenResponse, error) {
-    // 1. Validar temp_token
-    claims, err := s.validateTempToken(tempToken)
-    if err != nil {
-        return nil, errors.New("invalid_temp_token")
-    }
-
-    // 2. Validar que user é membro da organization
-    member, err := s.organizationMemberRepo.FindByUserAndOrganization(ctx, claims.Sub, organizationID)
-    if err != nil || member == nil {
-        return nil, errors.New("user_not_member_of_organization")
-    }
-
-    // 3. Gerar JWT final
-    user, _ := s.userRepo.FindByID(ctx, claims.Sub)
-    accessToken, _ := s.generateAccessToken(user, organizationID, member.Role)
-    refreshToken, _ := s.generateRefreshToken(user, organizationID)
-
-    return &TokenResponse{
-        AccessToken:  accessToken,
-        RefreshToken: refreshToken,
-        Organization: toOrganizationInfo(member),
-    }, nil
-}
-
-// AuthService.SwitchOrganization - Trocar de organização
-func (s *AuthService) SwitchOrganization(ctx context.Context, userID, newOrganizationID string) (*TokenResponse, error) {
-    // 1. Validar que user é membro da nova organization
-    member, err := s.organizationMemberRepo.FindByUserAndOrganization(ctx, userID, newOrganizationID)
-    if err != nil || member == nil {
-        return nil, errors.New("user_not_member_of_organization")
-    }
-
-    // 2. Gerar novo JWT
-    user, _ := s.userRepo.FindByID(ctx, userID)
-    accessToken, _ := s.generateAccessToken(user, newOrganizationID, member.Role)
-    refreshToken, _ := s.generateRefreshToken(user, newOrganizationID)
-
-    return &TokenResponse{
-        AccessToken:  accessToken,
-        RefreshToken: refreshToken,
-        Organization: toOrganizationInfo(member),
-    }, nil
-}
+```gherkin
+Given um usuário cadastrado com email "user@example.com"
+And o usuário pertence a exatamente 1 organization "Empresa ABC"
+When ele envia POST /auth/login com credenciais válidas
+Then o sistema valida email e senha
+And busca organizations do usuário
+And encontra 1 organization
+And gera JWT final contendo:
+  - user_id
+  - organization_id da única organization
+  - role do usuário naquela organization
+And retorna access_token e refresh_token
+And retorna dados da organization
+And o usuário é redirecionado para dashboard
 ```
 
-**Frontend Flow**:
-```javascript
-// Login
-async function login(email, password) {
-  const response = await api.post('/auth/login', { email, password })
+**Cenário B: Usuário com múltiplas Organizations**
 
-  if (response.requires_organization_selection) {
-    // Mostrar modal de seleção de organization
-    showOrganizationSelector(response.organizations, response.temp_token)
-  } else {
-    // Login direto (1 organization)
-    storeTokens(response.access_token, response.refresh_token)
-    setCurrentOrganization(response.organization)
-    redirectToDashboard()
-  }
-}
-
-// Selecionar organization
-async function selectOrganization(organizationId, tempToken) {
-  const response = await api.post('/auth/select-organization',
-    { organization_id: organizationId },
-    { headers: { Authorization: `Bearer ${tempToken}` }}
-  )
-
-  storeTokens(response.access_token, response.refresh_token)
-  setCurrentOrganization(response.organization)
-  redirectToDashboard()
-}
-
-// Trocar de organization
-async function switchOrganization(newOrganizationId) {
-  const response = await api.post('/auth/switch-organization',
-    { organization_id: newOrganizationId }
-  )
-
-  storeTokens(response.access_token, response.refresh_token)
-  setCurrentOrganization(response.organization)
-  window.location.reload() // Recarregar dados da nova organization
-}
+```gherkin
+Given um usuário cadastrado com email "user@example.com"
+And o usuário pertence a 3 organizations:
+  - "Empresa ABC" (role: admin)
+  - "Startup XYZ" (role: user)
+  - "Consultoria" (role: guest)
+When ele envia POST /auth/login com credenciais válidas
+Then o sistema valida email e senha
+And busca organizations do usuário
+And encontra 3 organizations
+And gera token temporário (tipo: "organization_selection") contendo apenas user_id
+And retorna lista de organizations com roles
+And o frontend mostra modal de seleção
+When o usuário seleciona "Empresa ABC"
+And envia POST /auth/select-organization com organization_id
+Then o sistema valida que usuário é membro da organization escolhida
+And gera JWT final com organization_id = "Empresa ABC"
+And retorna access_token e refresh_token
+And o usuário acessa dashboard da "Empresa ABC"
 ```
+
+**Cenário C: Trocar de Organization (Switch)**
+
+```gherkin
+Given um usuário autenticado atualmente na "Empresa ABC"
+And o usuário também pertence à "Startup XYZ"
+When ele clica no seletor de organization e escolhe "Startup XYZ"
+And envia POST /auth/switch-organization com organization_id da "Startup XYZ"
+Then o sistema valida que usuário é membro da "Startup XYZ"
+And gera novo JWT com organization_id = "Startup XYZ"
+And role pode ser diferente (era admin na ABC, é user na XYZ)
+And retorna novos tokens
+And o dashboard recarrega dados da "Startup XYZ"
+```
+
+**Regras de Negócio**:
+- **RN-MT-01**: Usuário sem nenhuma organization não pode fazer login (deve criar organization primeiro)
+- **RN-MT-02**: Token temporário expira em 15 minutos
+- **RN-MT-03**: Token temporário só permite acessar endpoint /auth/select-organization
+- **RN-MT-04**: Usuário só pode selecionar organizations das quais é membro
+- **RN-MT-05**: Ao trocar organization, role pode mudar (admin em uma, user em outra)
+- **RN-MT-06**: JWT final sempre contém organization_id + role específica daquela organization
 
 ---
 
@@ -519,59 +451,57 @@ CREATE INDEX idx_payments_organization_id ON payments(organization_id);
 - ❌ Performance overhead (avaliação de policies)
 - ✅ **Filtro explícito no código é mais claro e testável**
 
-**Exemplos de Queries**:
+**Exemplos de Queries Conceituais**:
 
-```go
-// Repository de Subscription (tem organization_id)
-func (r *SubscriptionRepository) FindByID(ctx context.Context, id string) (*Subscription, error) {
-    organizationID := ctx.Value("organization_id").(string)
-
-    var sub SubscriptionModel
-    // Query SEMPRE filtra por organization_id (explícito e testável)
-    err := r.db.Where("id = ? AND organization_id = ?", id, organizationID).First(&sub).Error
-
-    return toEntity(&sub), err
-}
-
-// Repository de Subscription - List
-func (r *SubscriptionRepository) List(ctx context.Context) ([]Subscription, error) {
-    organizationID := ctx.Value("organization_id").(string)
-
-    var subs []SubscriptionModel
-    // TODAS as queries filtram por organization_id
-    err := r.db.Where("organization_id = ? AND deleted_at IS NULL", organizationID).Find(&subs).Error
-
-    return toEntities(subs), err
-}
-
-// Repository de User (GLOBAL - sem organization_id)
-func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*User, error) {
-    var user UserModel
-    // Query NÃO filtra por organization (tabela global)
-    err := r.db.Where("email = ? AND deleted_at IS NULL", email).First(&user).Error
-    return toEntity(&user), err
-}
-
-// Repository de OrganizationMember (busca organizations do user)
-func (r *OrganizationMemberRepository) FindOrganizationsByUser(ctx context.Context, userID string) ([]OrganizationMember, error) {
-    var members []OrganizationMemberModel
-    // Query cross-organization (sem filtro de organization_id)
-    err := r.db.Where("user_id = ?", userID).
-        Preload("Organization").
-        Find(&members).Error
-    return toEntities(members), err
-}
-
-// Service de Auth valida acesso à organization
-func (s *AuthService) ValidateOrganizationAccess(ctx context.Context, userID, organizationID string) error {
-    // Verifica se user é membro da organization
-    member, err := s.organizationMemberRepo.FindByUserAndOrganization(ctx, userID, organizationID)
-    if err != nil || member == nil {
-        return errors.New("user not member of organization")
-    }
-    return nil
-}
+**Buscar Subscription (Tabela com organization_id)**:
+```sql
+-- Query SEMPRE filtra por organization_id
+SELECT * FROM subscriptions
+WHERE id = :subscription_id
+  AND organization_id = :organization_id_from_jwt  -- Isolamento
+  AND deleted_at IS NULL;
 ```
+
+**Listar Subscriptions (Tabela com organization_id)**:
+```sql
+-- TODAS as queries em tabelas de negócio filtram por organization_id
+SELECT * FROM subscriptions
+WHERE organization_id = :organization_id_from_jwt  -- Isolamento
+  AND deleted_at IS NULL;
+```
+
+**Buscar User por Email (Tabela GLOBAL - sem organization_id)**:
+```sql
+-- Query NÃO filtra por organization (tabela global)
+SELECT * FROM users
+WHERE email = :email
+  AND deleted_at IS NULL;
+```
+
+**Listar Organizations de um User (Cross-organization query)**:
+```sql
+-- Query que atravessa organizations para listar todas do usuário
+SELECT o.*, om.role
+FROM organizations o
+JOIN organization_members om ON om.organization_id = o.id
+WHERE om.user_id = :user_id
+  AND om.deleted_at IS NULL
+  AND o.deleted_at IS NULL;
+```
+
+**Validar Acesso do User à Organization**:
+```sql
+-- Valida que usuário é membro da organization antes de permitir acesso
+SELECT COUNT(*) FROM organization_members
+WHERE user_id = :user_id
+  AND organization_id = :organization_id
+  AND deleted_at IS NULL;
+
+-- Se COUNT = 0, usuário NÃO é membro (erro 403 Forbidden)
+-- Se COUNT = 1, usuário É membro (permite acesso)
+```
+
+**Nota**: A implementação técnica dessas queries está em `specs/technical/multi-tenancy-implementation.md`
 
 ---
 
@@ -632,61 +562,75 @@ Cada organization pode personalizar (armazenado em `organizations` ou `organizat
 - ❌ Adicionar organization_id na tabela users (users são globais)
 - ❌ Usar `.Find()` sem filtro de organization em tabelas de negócio
 
-### 6.2 Teste de Isolamento
+### 6.2 Cenários de Teste de Isolamento
 
-```go
-func TestOrganizationIsolation(t *testing.T) {
-    // Criar 2 organizations
-    org1 := createOrganization("Organization A")
-    org2 := createOrganization("Organization B")
+**Teste 1: Isolamento entre Organizations**
 
-    // Criar usuário global
-    user := createUser("joao@email.com")
+```gherkin
+Given existem 2 organizations: "Organization A" e "Organization B"
+And existe um usuário "joao@email.com"
+And o usuário é membro apenas da "Organization A" (role: admin)
+And a Organization A tem 1 subscription: "Sub A"
+And a Organization B tem 1 subscription: "Sub B"
+When o usuário faz login na Organization A
+And tenta listar subscriptions
+Then o sistema retorna apenas "Sub A"
+And NÃO retorna "Sub B" (isolamento funcionando)
 
-    // Associar user à org1 como admin
-    createOrganizationMember(org1.ID, user.ID, "admin")
+When o usuário tenta acessar diretamente a subscription "Sub B" por ID
+Then o sistema retorna 404 Not Found (como se não existisse)
+And NÃO expõe que a subscription existe em outra organization
+```
 
-    // Criar subscriptions em cada organization
-    sub1 := createSubscription(org1.ID, "Sub A")
-    sub2 := createSubscription(org2.ID, "Sub B")
+**Teste 2: Usuário com múltiplas Organizations**
 
-    // Login como user na org A
-    ctx := contextWithOrganization(user.ID, org1.ID)
+```gherkin
+Given existem 2 organizations: "Organization A" e "Organization B"
+And existe um usuário "joao@email.com"
+And o usuário é membro de ambas as organizations:
+  - Organization A com role "admin"
+  - Organization B com role "member"
+When o usuário faz login
+Then o sistema retorna lista de 2 organizations
+And mostra role específica de cada uma:
+  - Organization A: admin
+  - Organization B: member
+When o usuário seleciona Organization A
+Then o JWT contém organization_id = "Organization A"
+And o JWT contém role = "admin"
+And o usuário tem permissões de admin apenas na Organization A
+When o usuário troca para Organization B (switch)
+Then o novo JWT contém organization_id = "Organization B"
+And o novo JWT contém role = "member"
+And o usuário perde permissões de admin (agora é member)
+```
 
-    // Tentar buscar subscriptions
-    subs := subscriptionRepo.List(ctx)
+**Teste 3: Tentativa de Acesso não Autorizado**
 
-    // DEVE retornar apenas sub1 (da org A)
-    assert.Len(t, subs, 1)
-    assert.Equal(t, sub1.ID, subs[0].ID)
+```gherkin
+Given um usuário "attacker@email.com" membro apenas da Organization A
+And existe Organization B com subscription "Sub B"
+When o atacante tenta acessar diretamente:
+  GET /api/subscriptions/{id_da_sub_B}
+  Header: Authorization: Bearer {jwt_com_organization_a}
+Then o sistema extrai organization_id = "Organization A" do JWT
+And filtra query com WHERE organization_id = "Organization A"
+And NÃO encontra a subscription (está na Organization B)
+And retorna 404 Not Found
+And NÃO expõe que a subscription existe
+```
 
-    // Tentar acessar sub2 diretamente (da org B)
-    found := subscriptionRepo.FindByID(ctx, sub2.ID)
+**Teste 4: Validação de Membership ao Trocar Organization**
 
-    // DEVE retornar nil (não encontrado - isolamento funcionando)
-    assert.Nil(t, found)
-}
-
-func TestMultiOrganizationUser(t *testing.T) {
-    // Criar 2 organizations
-    orgA := createOrganization("Organization A")
-    orgB := createOrganization("Organization B")
-
-    // Criar usuário global
-    user := createUser("joao@email.com")
-
-    // Associar user a ambas as organizations com roles diferentes
-    createOrganizationMember(orgA.ID, user.ID, "admin")
-    createOrganizationMember(orgB.ID, user.ID, "member")
-
-    // Buscar organizations do user
-    orgs := organizationMemberRepo.FindOrganizationsByUser(user.ID)
-
-    // DEVE retornar 2 organizations
-    assert.Len(t, orgs, 2)
-    assert.Equal(t, "admin", orgs[0].Role)  // Organization A
-    assert.Equal(t, "member", orgs[1].Role) // Organization B
-}
+```gherkin
+Given um usuário membro apenas da Organization A
+When ele tenta trocar para Organization B (da qual NÃO é membro)
+And envia POST /auth/switch-organization com organization_id da B
+Then o sistema valida membership
+And NÃO encontra registro em organization_members
+And retorna 403 Forbidden
+And mensagem: "Você não é membro desta organização"
+And NÃO permite a troca
 ```
 
 ### 6.3 Auditoria

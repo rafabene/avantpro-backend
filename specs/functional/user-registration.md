@@ -613,68 +613,73 @@ CREATE INDEX idx_invites_organization ON invites(organization_id);
 
 ### 5.1 Validação de Senha
 
-```go
-type Password struct {
-    hash string
-}
+**Regras de Negócio**:
+- **RN-20**: Tamanho entre 8 e 72 caracteres
+- **RN-21**: Deve conter pelo menos 1 letra (a-z ou A-Z)
+- **RN-22**: Deve conter pelo menos 1 número (0-9)
+- **RN-23**: Senha é armazenada usando hash criptográfico seguro
+- **RN-24**: Hash deve ser resistente a ataques de força bruta
 
-func NewPassword(plaintext string) (Password, error) {
-    // Validar tamanho
-    if len(plaintext) < 8 || len(plaintext) > 72 {
-        return Password{}, errors.New("error.password_length_invalid")
-    }
+**Mensagens de Erro (i18n)**:
 
-    // Validar complexidade (1 letra + 1 número)
-    hasLetter := regexp.MustCompile(`[a-zA-Z]`).MatchString(plaintext)
-    hasNumber := regexp.MustCompile(`[0-9]`).MatchString(plaintext)
+| Violação                | Código de Erro              | Mensagem (pt-BR)                      |
+|-------------------------|-----------------------------|---------------------------------------|
+| Tamanho inválido        | `error.password_length`     | "Senha deve ter entre 8 e 72 caracteres" |
+| Sem letra               | `error.password_weak`       | "Senha deve conter pelo menos 1 letra" |
+| Sem número              | `error.password_weak`       | "Senha deve conter pelo menos 1 número" |
+| Hash falhou             | `error.internal_server`     | "Erro ao processar senha"             |
 
-    if !hasLetter || !hasNumber {
-        return Password{}, errors.New("error.password_weak")
-    }
+**Exemplos**:
 
-    // Gerar hash (bcrypt cost 12)
-    hash, err := bcrypt.GenerateFromPassword([]byte(plaintext), 12)
-    if err != nil {
-        return Password{}, err
-    }
+✅ **Senhas Válidas**:
+- `Senha123`
+- `MyP@ssw0rd`
+- `Abc12345`
+- `Test1234`
 
-    return Password{hash: string(hash)}, nil
-}
-
-func (p Password) Verify(plaintext string) bool {
-    err := bcrypt.CompareHashAndPassword([]byte(p.hash), []byte(plaintext))
-    return err == nil
-}
-```
+❌ **Senhas Inválidas**:
+- `12345678` → Erro: sem letra
+- `senhaboa` → Erro: sem número
+- `Abc123` → Erro: menos de 8 caracteres
+- `a1` → Erro: muito curta
 
 ---
 
 ### 5.2 Validação de Email
 
-```go
-type Email struct {
-    value string
-}
+**Regras de Negócio**:
+- **RN-25**: Email deve seguir formato RFC 5322 (padrão internacional)
+- **RN-26**: Email é normalizado: convertido para lowercase e trimmed
+- **RN-27**: Email deve ser único no sistema inteiro (não pode duplicar)
+- **RN-28**: Domínios descartáveis são bloqueados (ex: 10minutemail.com)
+- **RN-29**: Email deve ter parte local + @ + domínio válido
 
-var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
+**Processo de Normalização**:
+1. Remove espaços em branco no início/fim
+2. Converte para lowercase
+3. Exemplo: `  User@Example.COM  ` → `user@example.com`
 
-func NewEmail(email string) (Email, error) {
-    // Normalizar
-    normalized := strings.ToLower(strings.TrimSpace(email))
+**Mensagens de Erro (i18n)**:
 
-    // Validar formato
-    if !emailRegex.MatchString(normalized) {
-        return Email{}, errors.New("error.invalid_email_format")
-    }
+| Violação                | Código de Erro                        | Mensagem (pt-BR)                   |
+|-------------------------|---------------------------------------|------------------------------------|
+| Formato inválido        | `error.invalid_email_format`          | "Formato de email inválido"        |
+| Email já existe         | `error.email_already_exists`          | "Este email já está cadastrado"    |
+| Domínio descartável     | `error.disposable_email_not_allowed`  | "Emails temporários não são permitidos" |
 
-    // Bloquear domínios descartáveis (opcional)
-    if isDisposableEmail(normalized) {
-        return Email{}, errors.New("error.disposable_email_not_allowed")
-    }
+**Exemplos**:
 
-    return Email{value: normalized}, nil
-}
-```
+✅ **Emails Válidos**:
+- `user@example.com`
+- `john.doe@company.co.uk`
+- `test+tag@gmail.com`
+- `User@Example.COM` → normalizado para `user@example.com`
+
+❌ **Emails Inválidos**:
+- `invalid` → Erro: sem @
+- `@example.com` → Erro: sem parte local
+- `user@` → Erro: sem domínio
+- `user@10minutemail.com` → Erro: domínio descartável
 
 ---
 

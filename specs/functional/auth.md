@@ -109,76 +109,106 @@ Guest:
 
 ### 3.1 Fluxo Login Email/Password
 
+**Cenário**: Login bem-sucedido com credenciais válidas
+
+```gherkin
+Given um usuário cadastrado com email "user@example.com" e senha "Senha123"
+When ele envia POST /auth/login com { "email": "user@example.com", "password": "Senha123" }
+Then o sistema retorna status 200 OK
+And retorna access_token válido por 15 minutos
+And retorna refresh_token válido por 7 dias
+And o refresh_token é armazenado de forma segura no servidor
+And o cliente recebe os tokens no response body
 ```
-1. POST /auth/login
-   Body: { email, password }
 
-2. Sistema valida credenciais
-   - Busca usuário por email
-   - Compara senha (bcrypt)
+**Cenário**: Login com credenciais inválidas
 
-3. Se válido:
-   - Gera access_token (15min)
-   - Gera refresh_token (7 dias)
-   - Armazena refresh_token no Redis
-   - Retorna tokens
+```gherkin
+Given um usuário cadastrado com email "user@example.com"
+When ele envia POST /auth/login com senha incorreta
+Then o sistema retorna status 401 Unauthorized
+And retorna error code "invalid_credentials"
+And o contador de tentativas falhas é incrementado
+And após 5 tentativas falhas, a conta é bloqueada temporariamente
+```
 
-4. Cliente armazena tokens
-   - access_token: memória (não localStorage)
-   - refresh_token: httpOnly cookie (seguro)
+**Cenário**: Uso do access token em requisições protegidas
 
-5. Cliente usa access_token em requisições
-   Header: Authorization: Bearer <access_token>
+```gherkin
+Given um usuário autenticado com access_token válido
+When ele faz uma requisição para endpoint protegido com header "Authorization: Bearer <access_token>"
+Then o sistema valida o token
+And extrai user_id e role do token
+And permite acesso ao recurso se autorizado
 ```
 
 ### 3.2 Fluxo OAuth2 (Google)
 
+**Cenário**: Login social com Google - usuário existente
+
+```gherkin
+Given um usuário já cadastrado com email "user@gmail.com"
+When ele clica em "Login com Google"
+Then o sistema redireciona para Google OAuth (GET /auth/oauth/google)
+And o usuário autentica no Google e concede permissões
+And o Google redireciona de volta com code de autorização
+And o sistema troca o code por access_token do Google
+And o sistema obtém profile do usuário (email, name, avatar)
+And o sistema encontra usuário existente por email
+And o sistema atualiza informações do perfil (avatar, nome)
+And o sistema gera access_token e refresh_token próprios
+Then retorna os tokens JWT para o cliente
 ```
-1. GET /auth/oauth/google
-   - Sistema redireciona para Google OAuth
 
-2. Usuário autentica no Google
-   - Concede permissões
+**Cenário**: Login social com Google - novo usuário
 
-3. Google redireciona para callback
-   GET /auth/oauth/callback?code=xyz&state=abc
-
-4. Sistema troca code por tokens Google
-   - Obtém access_token do Google
-   - Obtém profile info (email, name, avatar)
-
-5. Sistema busca/cria usuário
-   - Se email existe: atualiza info
-   - Se não existe: cria novo usuário
-
-6. Sistema gera JWT próprio
-   - access_token (15min)
-   - refresh_token (7 dias)
-
-7. Retorna tokens para cliente
+```gherkin
+Given um email "newuser@gmail.com" não cadastrado no sistema
+When o usuário completa o fluxo OAuth com Google
+Then o sistema cria novo usuário com:
+  - Email obtido do Google
+  - Nome completo obtido do Google
+  - Avatar URL obtido do Google
+  - Status: active (email já verificado pelo Google)
+  - Role: user (padrão)
+And o sistema gera access_token e refresh_token
+And retorna os tokens para o cliente
 ```
 
 ### 3.3 Fluxo Refresh Token
 
+**Cenário**: Renovar access token expirado
+
+```gherkin
+Given um usuário com access_token expirado
+And um refresh_token válido (não expirado, válido por 7 dias)
+When o cliente envia POST /auth/refresh com { "refresh_token": "..." }
+Then o sistema valida o refresh_token
+And verifica que o token está armazenado no servidor
+And verifica que o token não expirou
+And gera novo access_token válido por 15 minutos
+Then retorna o novo access_token
 ```
-1. Access token expira (15min)
 
-2. Cliente detecta 401 Unauthorized
+**Cenário**: Refresh token com rotação habilitada
 
-3. POST /auth/refresh
-   Body: { refresh_token }
+```gherkin
+Given a configuração de rotação de tokens está habilitada
+When o cliente usa um refresh_token para obter novo access_token
+Then o sistema gera novo access_token
+And gera novo refresh_token
+And invalida o refresh_token antigo (não pode ser reutilizado)
+And retorna ambos os tokens novos
+```
 
-4. Sistema valida refresh_token
-   - Verifica assinatura JWT
-   - Verifica se existe no Redis
-   - Verifica se não expirou (7 dias)
+**Cenário**: Refresh token inválido ou expirado
 
-5. Se válido:
-   - Gera novo access_token (15min)
-   - Opcionalmente gera novo refresh_token (rotação)
-   - Invalida refresh_token antigo se rotação
-
-6. Retorna novo access_token
+```gherkin
+Given um refresh_token expirado ou inválido
+When o cliente tenta renovar o access_token
+Then o sistema retorna status 401 Unauthorized
+And retorna error code "invalid_refresh_token"
+And o cliente deve fazer login novamente
 ```
 
 ---
@@ -187,30 +217,36 @@ Guest:
 
 ### 4.1 Senhas
 
-- **Tamanho mínimo**: 8 caracteres
-- **Requisitos**: Pelo menos 1 letra e 1 número
-- **Hash**: bcrypt (cost 12)
-- **Validação**: Na criação e alteração de senha
+- **RN-01**: Tamanho mínimo de 8 caracteres
+- **RN-02**: Deve conter pelo menos 1 letra e 1 número
+- **RN-03**: Senhas são armazenadas usando hash seguro (nunca em texto plano)
+- **RN-04**: Validação aplicada na criação e alteração de senha
+- **RN-05**: Após 5 tentativas de login falhas, conta é bloqueada temporariamente
 
 ### 4.2 Tokens
 
-- **Access Token**: 15 minutos de validade
-- **Refresh Token**: 7 dias de validade
-- **Armazenamento**: Refresh tokens no Redis
-- **Revogação**: Logout invalida refresh token
-- **Rotação**: Refresh token pode ser rotacionado a cada uso
+- **RN-06**: Access token tem validade de 15 minutos
+- **RN-07**: Refresh token tem validade de 7 dias
+- **RN-08**: Refresh tokens são armazenados de forma persistente no servidor
+- **RN-09**: Logout invalida o refresh token da sessão atual
+- **RN-10**: Refresh tokens podem ser rotacionados a cada uso (configurável)
+- **RN-11**: Tokens contêm claims: user_id, email, role, permissions
+- **RN-12**: Access tokens são stateless (validados apenas por assinatura)
 
 ### 4.3 Roles
 
-- **Padrão**: User (ao criar conta)
-- **Alteração**: Apenas Admin pode alterar roles
-- **Validação**: Role deve ser um valor válido (admin, user, guest)
+- **RN-13**: Usuário recebe role "user" por padrão ao criar conta
+- **RN-14**: Apenas Admin pode alterar roles de outros usuários
+- **RN-15**: Role deve ser um valor válido: admin, user ou guest
+- **RN-16**: Usuário não pode remover própria role de admin (previne lockout)
 
 ### 4.4 Sessões
 
-- **Multi-device**: Usuário pode ter múltiplas sessões ativas
-- **Logout device**: Logout invalida apenas sessão atual
-- **Logout all**: Admin pode invalidar todas as sessões de um usuário
+- **RN-17**: Usuário pode ter múltiplas sessões ativas simultaneamente (multi-device)
+- **RN-18**: Logout padrão invalida apenas a sessão atual (device)
+- **RN-19**: Admin pode invalidar todas as sessões de um usuário (revogação total)
+- **RN-20**: Usuário pode visualizar lista de sessões ativas (endpoint /auth/sessions)
+- **RN-21**: Usuário pode revogar sessões individuais manualmente
 
 ---
 
