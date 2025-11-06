@@ -1,12 +1,13 @@
 # Multi-Tenancy - Requisitos Funcionais
 
-**Versão**: 3.3
+**Versão**: 3.4
 **Data**: 05/11/2025
 **Changelog**:
-- v3.0: Adicionado fluxo de login em 2 etapas (temp_token + select-tenant)
-- v3.1: Removido RLS (Row-Level Security) - filtro explícito no código é preferível
-- v3.2: Removida Fase 6 (Observabilidade) - não é escopo de multi-tenancy
+- v3.4: Removido slug de organizations (identificação apenas por UUID + name)
 - v3.3: Renomeado Tenant→Organization, adicionado UserAccount (1:1 com User), removidas seções de signup/invites/planos (delegadas para outras specs)
+- v3.2: Removida Fase 6 (Observabilidade) - não é escopo de multi-tenancy
+- v3.1: Removido RLS (Row-Level Security) - filtro explícito no código é preferível
+- v3.0: Adicionado fluxo de login em 2 etapas (temp_token + select-tenant)
 
 ---
 
@@ -169,7 +170,6 @@ ctx = context.WithValue(ctx, "role", claims.Role)  // role específica nesta org
   "organization": {
     "id": "uuid-abc",
     "name": "Empresa ABC",
-    "slug": "empresa-abc",
     "role": "admin"
   }
 }
@@ -184,13 +184,11 @@ ctx = context.WithValue(ctx, "role", claims.Role)  // role específica nesta org
     {
       "id": "uuid-abc",
       "name": "Empresa ABC",
-      "slug": "empresa-abc",
       "role": "admin"
     },
     {
       "id": "uuid-xyz",
       "name": "Startup XYZ",
-      "slug": "startup-xyz",
       "role": "user"
     }
   ]
@@ -220,7 +218,6 @@ Content-Type: application/json
   "organization": {
     "id": "uuid-abc",
     "name": "Empresa ABC",
-    "slug": "empresa-abc",
     "role": "admin"
   }
 }
@@ -249,7 +246,6 @@ Content-Type: application/json
   "organization": {
     "id": "uuid-xyz",
     "name": "Startup XYZ",
-    "slug": "startup-xyz",
     "role": "user"
   }
 }
@@ -424,7 +420,6 @@ Esta spec define apenas o campo `status` na tabela `organizations` (active, susp
 CREATE TABLE organizations (
     id UUID PRIMARY KEY,
     name VARCHAR(255) NOT NULL,              -- "Empresa ABC"
-    slug VARCHAR(100) UNIQUE NOT NULL,       -- "empresa-abc"
     status VARCHAR(50) NOT NULL,             -- active, suspended, canceled
     created_at BIGINT NOT NULL,
     updated_at BIGINT NOT NULL,
@@ -784,7 +779,7 @@ Middleware roteia request para o shard correto baseado em organization_id
    - Repositories (interfaces): `OrganizationRepository`, `OrganizationMemberRepository`, `UserAccountRepository`
 
 2. **Database Layer**:
-   - Tabela `organizations` (name, slug, status)
+   - Tabela `organizations` (name, status)
    - Tabela `organization_members` (N:N entre users e organizations)
    - Tabela `user_accounts` (1:1 com users - dados pessoais)
    - Tabela `users` simplificada (apenas email, password_hash)
