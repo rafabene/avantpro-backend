@@ -44,20 +44,57 @@ type Password struct {
     hash string  // Hash bcrypt da senha
 }
 
+// ValidationError representa um erro de validação individual
+type ValidationError struct {
+    Code    string `json:"code"`
+    Message string `json:"message"`
+}
+
+// ValidationErrors representa múltiplos erros de validação
+type ValidationErrors []ValidationError
+
+func (v ValidationErrors) Error() string {
+    if len(v) == 0 {
+        return ""
+    }
+    // Retorna primeiro erro para compatibilidade com interface error
+    return v[0].Message
+}
+
 // NewPassword cria um Password a partir de texto plano
-// Valida e gera hash automaticamente
+// Valida TODAS as regras simultaneamente e retorna TODOS os erros
 func NewPassword(plaintext string) (Password, error) {
+    var errors ValidationErrors
+
     // Validar tamanho
     if len(plaintext) < minPasswordLength || len(plaintext) > maxPasswordLength {
-        return Password{}, errors.New("error.password_length_invalid")
+        errors = append(errors, ValidationError{
+            Code:    "error.password_length",
+            Message: "Senha deve ter entre 8 e 72 caracteres",
+        })
     }
 
-    // Validar complexidade (1 letra + 1 número)
+    // Validar presença de letra
     hasLetter := regexp.MustCompile(`[a-zA-Z]`).MatchString(plaintext)
-    hasNumber := regexp.MustCompile(`[0-9]`).MatchString(plaintext)
+    if !hasLetter {
+        errors = append(errors, ValidationError{
+            Code:    "error.password_no_letter",
+            Message: "Senha deve conter pelo menos 1 letra",
+        })
+    }
 
-    if !hasLetter || !hasNumber {
-        return Password{}, errors.New("error.password_weak")
+    // Validar presença de número
+    hasNumber := regexp.MustCompile(`[0-9]`).MatchString(plaintext)
+    if !hasNumber {
+        errors = append(errors, ValidationError{
+            Code:    "error.password_no_number",
+            Message: "Senha deve conter pelo menos 1 número",
+        })
+    }
+
+    // Se há erros, retorna TODOS de uma vez
+    if len(errors) > 0 {
+        return Password{}, errors
     }
 
     // Gerar hash bcrypt
@@ -178,22 +215,73 @@ func TestNewPassword_Valid(t *testing.T) {
     }
 }
 
-func TestNewPassword_TooShort(t *testing.T) {
-    pwd, err := valueobjects.NewPassword("Abc123")
+func TestNewPassword_MultipleErrors(t *testing.T) {
+    // Senha curta (3 chars) E sem número
+    pwd, err := valueobjects.NewPassword("abc")
+
     assert.Error(t, err)
-    assert.Equal(t, "error.password_length_invalid", err.Error())
+
+    // Deve retornar ValidationErrors com múltiplos erros
+    valErrors, ok := err.(valueobjects.ValidationErrors)
+    assert.True(t, ok, "erro deve ser do tipo ValidationErrors")
+    assert.Len(t, valErrors, 2, "deve retornar 2 erros")
+
+    // Verifica que contém erro de tamanho
+    hasLengthError := false
+    for _, e := range valErrors {
+        if e.Code == "error.password_length" {
+            hasLengthError = true
+            break
+        }
+    }
+    assert.True(t, hasLengthError, "deve conter erro de tamanho")
+
+    // Verifica que contém erro de ausência de número
+    hasNoNumberError := false
+    for _, e := range valErrors {
+        if e.Code == "error.password_no_number" {
+            hasNoNumberError = true
+            break
+        }
+    }
+    assert.True(t, hasNoNumberError, "deve conter erro de número ausente")
+}
+
+func TestNewPassword_TooShortAndNoNumber(t *testing.T) {
+    // Senha curta E sem número - retorna ambos os erros
+    pwd, err := valueobjects.NewPassword("abc")
+
+    assert.Error(t, err)
+    valErrors := err.(valueobjects.ValidationErrors)
+    assert.Len(t, valErrors, 2)
+}
+
+func TestNewPassword_TooLongAndNoNumber(t *testing.T) {
+    // Senha muito longa (80 chars) E sem número
+    longPassword := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuv"
+    pwd, err := valueobjects.NewPassword(longPassword)
+
+    assert.Error(t, err)
+    valErrors := err.(valueobjects.ValidationErrors)
+    assert.Len(t, valErrors, 2)
 }
 
 func TestNewPassword_NoLetter(t *testing.T) {
     pwd, err := valueobjects.NewPassword("12345678")
+
     assert.Error(t, err)
-    assert.Equal(t, "error.password_weak", err.Error())
+    valErrors := err.(valueobjects.ValidationErrors)
+    assert.Len(t, valErrors, 1)
+    assert.Equal(t, "error.password_no_letter", valErrors[0].Code)
 }
 
 func TestNewPassword_NoNumber(t *testing.T) {
     pwd, err := valueobjects.NewPassword("senhaboa")
+
     assert.Error(t, err)
-    assert.Equal(t, "error.password_weak", err.Error())
+    valErrors := err.(valueobjects.ValidationErrors)
+    assert.Len(t, valErrors, 1)
+    assert.Equal(t, "error.password_no_number", valErrors[0].Code)
 }
 
 func TestPassword_VerifyCorrect(t *testing.T) {
@@ -476,7 +564,7 @@ func (u *User) ChangePassword(newPassword valueobjects.Password) {
 }
 ```
 
-### 6.2 Uso no Handler
+### 6.2 Uso no Handler (com múltiplos erros)
 
 ```go
 // internal/handlers/http/auth_handler.go
@@ -489,12 +577,32 @@ func (h *AuthHandler) Register(c *gin.Context) {
 
     err := h.authService.Register(req.Email, req.Password)
     if err != nil {
-        // Traduz erro para idioma do request
-        message := h.i18n.T(c, err.Error())
+        // Verifica se é ValidationErrors (múltiplos erros)
+        if valErrors, ok := err.(valueobjects.ValidationErrors); ok {
+            // Traduzir todos os erros
+            var translatedErrors []map[string]string
+            for _, e := range valErrors {
+                translatedErrors = append(translatedErrors, map[string]string{
+                    "code":    e.Code,
+                    "message": h.i18n.T(c, e.Code),  // Traduz cada erro
+                })
+            }
 
+            c.JSON(400, gin.H{
+                "error":   "validation_failed",
+                "message": h.i18n.T(c, "error.validation_failed"),
+                "details": map[string]interface{}{
+                    "password": translatedErrors,
+                },
+            })
+            return
+        }
+
+        // Erro simples (não ValidationErrors)
+        message := h.i18n.T(c, err.Error())
         c.JSON(400, gin.H{
-            "error": err.Error(),        // Código do erro
-            "message": message,          // Mensagem traduzida
+            "error":   err.Error(),
+            "message": message,
         })
         return
     }
@@ -503,9 +611,139 @@ func (h *AuthHandler) Register(c *gin.Context) {
 }
 ```
 
+**Exemplo de Response com múltiplos erros**:
+
+Request:
+```json
+POST /auth/register
+{
+  "email": "user@example.com",
+  "password": "abc"
+}
+```
+
+Response `400 Bad Request`:
+```json
+{
+  "error": "validation_failed",
+  "message": "Erro de validação",
+  "details": {
+    "password": [
+      {
+        "code": "error.password_length",
+        "message": "Senha deve ter entre 8 e 72 caracteres"
+      },
+      {
+        "code": "error.password_no_number",
+        "message": "Senha deve conter pelo menos 1 número"
+      }
+    ]
+  }
+}
+```
+
 ---
 
-## 7. Referências
+## 7. Validação de Múltiplos Campos
+
+Quando validando múltiplos campos (email + senha), devemos coletar TODOS os erros de TODOS os campos:
+
+```go
+// internal/services/user_service.go
+func (s *UserService) Register(emailStr, passwordStr string) error {
+    allErrors := make(map[string][]valueobjects.ValidationError)
+
+    // Validar email
+    email, err := valueobjects.NewEmail(emailStr)
+    if err != nil {
+        if valErrors, ok := err.(valueobjects.ValidationErrors); ok {
+            allErrors["email"] = valErrors
+        } else {
+            // Erro simples - converter para ValidationErrors
+            allErrors["email"] = valueobjects.ValidationErrors{
+                {Code: err.Error(), Message: err.Error()},
+            }
+        }
+    }
+
+    // Validar senha
+    password, err := valueobjects.NewPassword(passwordStr)
+    if err != nil {
+        if valErrors, ok := err.(valueobjects.ValidationErrors); ok {
+            allErrors["password"] = valErrors
+        } else {
+            allErrors["password"] = valueobjects.ValidationErrors{
+                {Code: err.Error(), Message: err.Error()},
+            }
+        }
+    }
+
+    // Se há erros em qualquer campo, retorna TODOS
+    if len(allErrors) > 0 {
+        return &MultiFieldValidationError{Errors: allErrors}
+    }
+
+    // Validação de negócio: email único
+    exists, _ := s.userRepo.ExistsByEmail(email.Value())
+    if exists {
+        return errors.New("error.email_already_exists")
+    }
+
+    // Criar usuário
+    user := entities.NewUser(email, password)
+    return s.userRepo.Save(user)
+}
+
+// MultiFieldValidationError agrupa erros de múltiplos campos
+type MultiFieldValidationError struct {
+    Errors map[string][]valueobjects.ValidationError
+}
+
+func (e *MultiFieldValidationError) Error() string {
+    return "validation_failed"
+}
+```
+
+**Response com múltiplos campos inválidos**:
+
+Request:
+```json
+POST /auth/register
+{
+  "email": "invalid",
+  "password": "abc"
+}
+```
+
+Response `400 Bad Request`:
+```json
+{
+  "error": "validation_failed",
+  "message": "Erro de validação",
+  "details": {
+    "email": [
+      {
+        "code": "error.invalid_email_format",
+        "message": "Formato de email inválido"
+      }
+    ],
+    "password": [
+      {
+        "code": "error.password_length",
+        "message": "Senha deve ter entre 8 e 72 caracteres"
+      },
+      {
+        "code": "error.password_no_number",
+        "message": "Senha deve conter pelo menos 1 número"
+      }
+    ]
+  }
+}
+```
+
+---
+
+## 8. Referências
 
 **Specs Relacionadas**:
 - `specs/functional/user-registration.md` - Requisitos funcionais de validação
