@@ -5,7 +5,7 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/rafabene/avantpro-backend/internal/domain/ports"
+	"github.com/rafabene/avantpro-backend/internal/domain"
 )
 
 // contextKey is a custom type for context keys to avoid collisions
@@ -13,13 +13,13 @@ type contextKey string
 
 const txKey contextKey = "tx"
 
-// UnitOfWork implementa ports.UnitOfWork
+// UnitOfWork implementa domain.UnitOfWork
 type UnitOfWork struct {
 	db *gorm.DB
 }
 
 // NewUnitOfWork cria um novo UnitOfWork
-func NewUnitOfWork(db *gorm.DB) ports.UnitOfWork {
+func NewUnitOfWork(db *gorm.DB) domain.UnitOfWork {
 	return &UnitOfWork{db: db}
 }
 

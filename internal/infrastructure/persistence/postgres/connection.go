@@ -8,12 +8,12 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 
-	"github.com/rafabene/avantpro-backend/internal/domain/ports"
+	"github.com/rafabene/avantpro-backend/internal/domain"
 	"github.com/rafabene/avantpro-backend/internal/infrastructure/config"
 )
 
 // NewDatabaseConnection cria uma nova conexão com o PostgreSQL
-func NewDatabaseConnection(cfg *config.DatabaseConfig, log ports.Logger) (*gorm.DB, error) {
+func NewDatabaseConnection(cfg *config.DatabaseConfig, log domain.Logger) (*gorm.DB, error) {
 	// GORM config
 	gormConfig := &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Info),

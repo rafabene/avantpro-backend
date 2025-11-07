@@ -142,10 +142,8 @@ avantpro-backend/
 │   │   │   ├── payment_gateway.go
 │   │   │   └── sms_gateway.go
 │   │   │
-│   │   ├── ports/                     # Interfaces de infraestrutura
-│   │   │   ├── logger.go
-│   │   │   ├── unit_of_work.go
-│   │   │   └── cache.go
+│   │   ├── logger.go                  # Interface de logging
+│   │   ├── unit_of_work.go            # Interface de transações
 │   │   │
 │   │   └── errors/                    # Erros de domínio
 │   │       ├── errors.go
@@ -384,11 +382,13 @@ type EmailGateway interface {
 }
 ```
 
-#### 4.1.5 Ports (Interfaces)
+#### 4.1.5 Interfaces de Infraestrutura
+
+**UnitOfWork** - Gerenciamento de transações:
 
 ```go
-// internal/domain/ports/unit_of_work.go
-package ports
+// internal/domain/unit_of_work.go
+package domain
 
 import "context"
 
@@ -400,9 +400,11 @@ type UnitOfWork interface {
 }
 ```
 
+**Logger** - Interface de logging:
+
 ```go
-// internal/domain/ports/logger.go
-package ports
+// internal/domain/logger.go
+package domain
 
 type Logger interface {
     Info(msg string, args ...any)
@@ -418,7 +420,7 @@ type Logger interface {
 **Responsabilidades:**
 - Implementar casos de uso (use cases)
 - Orquestrar operações de negócio
-- Coordenar repositories, gateways e ports
+- Coordenar repositories, gateways e interfaces de infraestrutura
 - Gerenciar transações
 - Aplicar regras de negócio complexas
 
@@ -435,24 +437,24 @@ package services
 
 import (
     "context"
+    "avantpro-backend/internal/domain"
     "avantpro-backend/internal/domain/entities"
     "avantpro-backend/internal/domain/repositories"
     "avantpro-backend/internal/domain/gateways"
-    "avantpro-backend/internal/domain/ports"
 )
 
 type UserService struct {
     userRepo     repositories.UserRepository
     emailGateway gateways.EmailGateway
-    uow          ports.UnitOfWork
-    logger       ports.Logger
+    uow          domain.UnitOfWork
+    logger       domain.Logger
 }
 
 func NewUserService(
     userRepo repositories.UserRepository,
     emailGateway gateways.EmailGateway,
-    uow ports.UnitOfWork,
-    logger ports.Logger,
+    uow domain.UnitOfWork,
+    logger domain.Logger,
 ) *UserService {
     return &UserService{
         userRepo:     userRepo,
@@ -757,14 +759,14 @@ package postgres
 import (
     "context"
     "gorm.io/gorm"
-    "avantpro-backend/internal/domain/ports"
+    "avantpro-backend/internal/domain"
 )
 
 type UnitOfWork struct {
     db *gorm.DB
 }
 
-func NewUnitOfWork(db *gorm.DB) ports.UnitOfWork {
+func NewUnitOfWork(db *gorm.DB) domain.UnitOfWork {
     return &UnitOfWork{db: db}
 }
 
@@ -1151,7 +1153,7 @@ func main() {
 type App struct {
     router *gin.Engine
     config *config.Config
-    logger ports.Logger
+    logger domain.Logger
 }
 
 func (a *App) Run(ctx context.Context) error {

@@ -40,7 +40,7 @@ help: ## Show this help
 
 ## Development
 .PHONY: dev
-dev: ## Run with hot reload (Air)
+dev: docs/generate ## Run with hot reload (Air)
 	air
 
 .PHONY: run
@@ -189,6 +189,13 @@ docker/down: ## Stop Docker Compose services
 docker/logs: ## Show Docker Compose logs
 	docker-compose logs -f api
 
+## Documentation
+.PHONY: docs/generate
+docs/generate: ## Generate Swagger documentation
+	@echo "Generating Swagger docs..."
+	swag init -g cmd/api/main.go -o docs
+	@echo "Swagger docs generated successfully"
+
 ## CI/CD
 .PHONY: pre-commit
 pre-commit: fmt lint test/unit ## Run pre-commit checks
@@ -201,6 +208,7 @@ install-tools: ## Install development tools
 	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $$($(GOCMD) env GOPATH)/bin
 	$(GOCMD) install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
 	$(GOCMD) install golang.org/x/vuln/cmd/govulncheck@latest
+	$(GOCMD) install github.com/swaggo/swag/cmd/swag@latest
 	@echo "Tools installed successfully"
 
 .DEFAULT_GOAL := help

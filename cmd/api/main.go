@@ -10,15 +10,37 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 
-	httphandlers "github.com/rafabene/avantpro-backend/internal/handlers/http"
 	"github.com/rafabene/avantpro-backend/internal/handlers/middleware"
 	"github.com/rafabene/avantpro-backend/internal/infrastructure/config"
 	"github.com/rafabene/avantpro-backend/internal/infrastructure/i18n"
 	"github.com/rafabene/avantpro-backend/internal/infrastructure/logging"
 	"github.com/rafabene/avantpro-backend/internal/infrastructure/persistence/postgres"
-	"github.com/rafabene/avantpro-backend/internal/services"
+
+	_ "github.com/rafabene/avantpro-backend/docs" // Import generated docs
 )
+
+// @title AvantPro Backend API
+// @version 1.0
+// @description REST API para gerenciamento de assinaturas seguindo princípios de Clean Architecture
+// @termsOfService http://swagger.io/terms/
+
+// @contact.name API Support
+// @contact.email support@avantpro.com
+
+// @license.name MIT
+// @license.url https://opensource.org/licenses/MIT
+
+// @host localhost:8080
+// @BasePath /api/v1
+// @schemes http https
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Type "Bearer" followed by a space and JWT token.
 
 func main() {
 	// Carregar configurações
@@ -53,21 +75,30 @@ func main() {
 	)
 
 	// Inicializar repositories
-	userRepo := postgres.NewUserRepository(db)
-	uow := postgres.NewUnitOfWork(db)
+	_ = postgres.NewUnitOfWork(db) // TODO: Usar quando implementar specs
 
 	// Inicializar services
-	userService := services.NewUserService(userRepo, uow, logger)
+	// TODO: Adicionar services conforme specs
 
 	// Inicializar handlers
-	userHandler := httphandlers.NewUserHandler(userService)
+	// TODO: Adicionar handlers conforme specs
 
 	// Setup Gin
 	if cfg.Env == "production" {
 		gin.SetMode(gin.ReleaseMode)
+	} else if cfg.Env == "development" {
+		gin.SetMode(gin.DebugMode)
 	}
 
-	router := gin.Default()
+	router := gin.New()
+	router.Use(gin.Logger())   // Middleware de logging
+	router.Use(gin.Recovery()) // Middleware de recovery para panics
+
+	// Swagger documentation - apenas em development
+	if cfg.Env == "development" {
+		router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+		logger.Info("swagger UI enabled", "url", "http://"+cfg.Server.Host+":"+cfg.Server.Port+"/swagger/index.html")
+	}
 
 	// Middleware global para adicionar base URL ao contexto
 	router.Use(func(c *gin.Context) {
@@ -91,16 +122,7 @@ func main() {
 	})
 
 	// API routes
-	v1 := router.Group("/api/v1")
-	{
-		// Users
-		users := v1.Group("/users")
-		{
-			users.POST("", userHandler.CreateUser)
-			users.GET("/:id", userHandler.GetUser)
-			users.GET("", userHandler.ListUsers)
-		}
-	}
+	_ = router.Group("/api/v1") // TODO: Adicionar rotas conforme specs
 
 	// HTTP Server
 	srv := &http.Server{

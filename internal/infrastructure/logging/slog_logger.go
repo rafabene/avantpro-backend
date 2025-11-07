@@ -4,16 +4,16 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/rafabene/avantpro-backend/internal/domain/ports"
+	"github.com/rafabene/avantpro-backend/internal/domain"
 )
 
-// SlogLogger implementa ports.Logger usando slog do stdlib
+// SlogLogger implementa domain.Logger usando slog do stdlib
 type SlogLogger struct {
 	logger *slog.Logger
 }
 
 // NewSlogLogger cria um novo logger usando slog
-func NewSlogLogger(level string) ports.Logger {
+func NewSlogLogger(level string) domain.Logger {
 	var logLevel slog.Level
 
 	switch level {
@@ -55,7 +55,7 @@ func (l *SlogLogger) Warn(msg string, args ...any) {
 	l.logger.Warn(msg, args...)
 }
 
-func (l *SlogLogger) With(args ...any) ports.Logger {
+func (l *SlogLogger) With(args ...any) domain.Logger {
 	return &SlogLogger{
 		logger: l.logger.With(args...),
 	}

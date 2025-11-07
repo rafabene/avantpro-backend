@@ -1,8 +1,17 @@
 # Registro de Usuários - Requisitos Funcionais
 
-**Versão**: 3.0
+**Versão**: 3.1
 **Data**: 06/11/2025
 **Changelog**:
+- v3.1: **REQUISITOS DE SEGURANÇA** - Adicionadas regras críticas de segurança baseadas em auditoria:
+  - RN-26 a RN-30: Geração segura de tokens (crypto/rand, 256 bits, constant-time)
+  - RN-31 a RN-34: Hash bcrypt obrigatório com cost 12
+  - RN-35 a RN-39: Proteção CSRF em todos os endpoints sensíveis
+  - RN-40 a RN-43: Proteção contra timing attacks
+  - RN-44 a RN-49: JWT com TTL de 5 minutos (reduzido de 15)
+  - RN-50 a RN-54: Headers de segurança obrigatórios (X-Frame-Options, CSP, etc)
+  - RN-55 a RN-59: Validação CORS configurável via ambiente
+  - RN-09.1: Login automático apenas na primeira ativação (segurança)
 - v3.0: **FLUXO SIMPLIFICADO** - Registro + Organization em 1 etapa (reduz abandono de 45% para 15%)
 - v2.2: Removido slug de organizations (identificação apenas por UUID + name)
 - v2.1: Removido campo nome completo do registro (apenas email + senha)
@@ -173,6 +182,7 @@ Usuário pode criar conta via convite (não precisa fornecer nome da empresa):
 - Sistema verifica que conta já está ativa
 - Sistema retorna mensagem: "Conta já ativada. Faça login"
 - Frontend redireciona para `/login`
+- **IMPORTANTE**: Login automático NÃO é permitido se conta já está ativa (segurança)
 
 **2.2.3 - Token Inválido**:
 - Sistema retorna erro 400 Bad Request
@@ -187,7 +197,8 @@ Usuário pode criar conta via convite (não precisa fornecer nome da empresa):
 **Regras de Negócio**:
 - **RN-07**: Token de ativação expira em 24 horas
 - **RN-08**: Token é single-use (não pode reutilizar)
-- **RN-09**: Ativação faz login automático (UX simplificada)
+- **RN-09**: Ativação faz login automático APENAS na primeira vez (status inactive → active)
+- **RN-09.1**: Login automático NÃO é permitido se conta já está ativa (segurança)
 - **RN-10**: Usuário pode solicitar reenvio do email de ativação
 - **RN-11**: Conta inativa não pode fazer login manual
 
@@ -996,6 +1007,119 @@ Role: Membro
 
 [ Cancelar ]  [ Confirmar Aceite ]
 ```
+
+### 8.4 Geração Segura de Tokens
+
+**Regras de Negócio**:
+- **RN-26**: Tokens DEVEM ser gerados com gerador criptográfico seguro
+- **RN-27**: Tokens DEVEM ter mínimo 256 bits de entropia (32 bytes)
+- **RN-28**: Tokens DEVEM ser armazenados como hash no banco (não plaintext)
+- **RN-29**: Comparação de tokens DEVE usar constant-time comparison
+- **RN-30**: Tokens DEVEM ser Base64 URL-safe encoded
+
+**Algoritmos Proibidos**:
+- ❌ UUID v1 (baseado em timestamp)
+- ❌ Geradores pseudoaleatórios não criptográficos
+- ❌ Tokens baseados apenas em timestamp
+- ❌ IDs sequenciais ou previsíveis
+
+### 8.5 Hash de Senha
+
+**Regras de Negócio**:
+- **RN-31**: Senhas DEVEM ser hashadas com bcrypt
+- **RN-32**: Bcrypt cost DEVE ser 12 (aproximadamente 300ms)
+- **RN-33**: Verificação de senha DEVE usar constant-time comparison
+- **RN-34**: Bcrypt cost PODE ser configurável via variável de ambiente
+
+**Algoritmo Obrigatório**: bcrypt com cost mínimo 12
+
+**Algoritmos Proibidos**:
+- ❌ MD5, SHA-1 (criptograficamente quebrados)
+- ❌ SHA-256 sem salt ou key derivation
+- ❌ bcrypt com cost < 12
+- ❌ Plaintext
+
+### 8.6 Proteção CSRF
+
+**Regras de Negócio**:
+- **RN-35**: Todos os endpoints POST/PUT/DELETE DEVEM validar CSRF token
+- **RN-36**: Token CSRF DEVE ser gerado com entropia criptográfica (32 bytes mínimo)
+- **RN-37**: Token CSRF DEVE expirar em 1 hora
+- **RN-38**: Token DEVE ser enviado via header `X-CSRF-Token` ou campo de formulário
+- **RN-39**: Token DEVE ser armazenado em cookie HttpOnly + SameSite=Strict
+
+**Endpoints Protegidos**:
+- POST /auth/register-complete
+- POST /auth/resend-activation
+- POST /auth/accept-invite
+- POST /invites
+
+**Configuração de Cookie CSRF**:
+- HttpOnly: true
+- Secure: true (apenas HTTPS em produção)
+- SameSite: Strict
+- Max-Age: configurável (padrão 3600 segundos)
+- Path: /
+
+### 8.7 Proteção Contra Timing Attacks
+
+**Regras de Negócio**:
+- **RN-40**: Response time DEVE ser constante independente de email existir
+- **RN-41**: Sistema DEVE adicionar delay aleatório para mascarar timing de queries
+- **RN-42**: Query de verificação DEVE ser executada SEMPRE (mesmo se input inválido)
+- **RN-43**: Erro de database NÃO DEVE alterar timing da response
+
+**Endpoints Afetados**:
+- POST /auth/register-complete
+- POST /auth/resend-activation
+
+**Objetivo**: Prevenir que atacante descubra emails cadastrados via análise de tempo de resposta.
+
+### 8.8 JWT e Tokens de Acesso
+
+**Regras de Negócio**:
+- **RN-44**: Access token JWT DEVE ter validade de 5 minutos
+- **RN-45**: Refresh token DEVE ter validade de 7 dias
+- **RN-46**: JWT DEVE incluir claims mínimos: user_id, organization_id, role
+- **RN-47**: JWT DEVE usar algoritmo HS256 ou RS256 (nunca None ou symmetric inseguro)
+- **RN-48**: JTI (JWT ID) DEVE ser único para permitir auditoria e revogação futura
+- **RN-49**: TTL de tokens DEVE ser configurável via variável de ambiente
+
+**Justificativa TTL Reduzido**:
+- Access token de 5min reduz janela de exploração se token for roubado
+- Refresh token permite renovação transparente sem re-autenticação
+
+### 8.9 Headers de Segurança
+
+**Regras de Negócio**:
+- **RN-50**: TODAS as respostas HTTP DEVEM incluir headers de segurança
+- **RN-51**: X-Frame-Options DEVE ser DENY
+- **RN-52**: Content-Security-Policy DEVE incluir `frame-ancestors 'none'`
+- **RN-53**: Referrer-Policy DEVE ser no-referrer ou strict-origin-when-cross-origin
+- **RN-54**: X-Content-Type-Options DEVE ser nosniff
+
+**Headers Obrigatórios**:
+- X-Frame-Options: DENY
+- Content-Security-Policy: frame-ancestors 'none'
+- X-Content-Type-Options: nosniff
+- X-XSS-Protection: 1; mode=block
+- Referrer-Policy: strict-origin-when-cross-origin
+
+**Objetivo**: Proteger contra clickjacking, XSS, e vazamento de informações.
+
+### 8.10 Validação de Origin (CORS)
+
+**Regras de Negócio**:
+- **RN-55**: Origins CORS DEVEM ser configuráveis via variável de ambiente
+- **RN-56**: Sistema DEVE suportar múltiplos origins (produção, staging, desenvolvimento)
+- **RN-57**: CORS NUNCA DEVE permitir wildcard `*` com credentials
+- **RN-58**: AllowCredentials DEVE ser true apenas para origins configurados como confiáveis
+- **RN-59**: Origin DEVE ser validado antes de processar request em endpoints sensíveis
+
+**Configuração Via Ambiente**:
+- Lista de origins permitidos deve vir de variável de ambiente
+- Suportar múltiplos valores separados por vírgula
+- Validação deve ser case-sensitive
 
 ---
 
