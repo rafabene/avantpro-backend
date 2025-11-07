@@ -522,10 +522,10 @@ func extractJTI(tokenString string) string {
 
 ### 4.5 Activation Service (Fluxo Simplificado)
 
-**Novos Endpoints para Fluxo Simplificado**:
-- POST /auth/register-complete
-- GET /activate
-- POST /auth/resend-activation
+**Endpoints de Gerenciamento de Usuários** (não autenticação):
+- POST /users
+- GET /users/activate
+- POST /users/resend-activation
 
 ```go
 // internal/services/activation_service.go
@@ -842,8 +842,8 @@ func NewActivationHandler(svc *services.ActivationService) *ActivationHandler {
     return &ActivationHandler{activationService: svc}
 }
 
-// POST /auth/register-complete
-func (h *ActivationHandler) RegisterComplete(c *gin.Context) {
+// POST /users
+func (h *UserHandler) CreateUser(c *gin.Context) {
     var req struct {
         Email            string `json:"email" binding:"required,email"`
         Password         string `json:"password" binding:"required,min=8"`
@@ -922,13 +922,31 @@ func (h *ActivationHandler) ResendActivation(c *gin.Context) {
 
 ```go
 // cmd/api/main.go (ou internal/handlers/http/router.go)
-authGroup := router.Group("/auth")
+
+// Grupo /users - Gerenciamento de usuários (registro, ativação, perfil)
+usersGroup := router.Group("/users")
 {
-    authGroup.POST("/register-complete", activationHandler.RegisterComplete)
-    authGroup.POST("/resend-activation", activationHandler.ResendActivation)
+    usersGroup.POST("", userHandler.CreateUser)                    // POST /users
+    usersGroup.GET("/activate", userHandler.Activate)              // GET /users/activate
+    usersGroup.POST("/resend-activation", userHandler.ResendActivation)
+
+    // Protegidos (requerem JWT)
+    usersGroup.PATCH("/me", authMiddleware(), userHandler.UpdateProfile)
+
+    // Convites
+    invitesGroup := usersGroup.Group("/invites")
+    {
+        invitesGroup.POST("/accept", userHandler.AcceptInvite)     // POST /users/invites/accept
+    }
 }
 
-router.GET("/activate", activationHandler.Activate)
+// Grupo /auth - Apenas autenticação (login, logout, tokens)
+authGroup := router.Group("/auth")
+{
+    authGroup.POST("/login", authHandler.Login)
+    authGroup.POST("/logout", authMiddleware(), authHandler.Logout)
+    authGroup.POST("/refresh", authHandler.RefreshToken)
+}
 ```
 
 ---

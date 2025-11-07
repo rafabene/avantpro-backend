@@ -255,7 +255,7 @@ And o cliente deve fazer login novamente
 ### 5.1 Públicos (sem autenticação)
 
 ```
-POST   /auth/register       - Registrar novo usuário
+POST   /users               - Registrar novo usuário (veja user-registration.md)
 POST   /auth/login          - Login com email/senha
 POST   /auth/refresh        - Renovar access token
 GET    /auth/oauth/google   - Iniciar OAuth Google
@@ -349,8 +349,9 @@ GET    /admin/users                    - Listar todos os usuários
 
 **Pendente**:
 - ⏳ JWT generation/validation
-- ⏳ Auth service (login, register, refresh)
-- ⏳ Auth handlers (/auth/login, /auth/register)
+- ⏳ Auth service (login, logout, refresh)
+- ⏳ Auth handlers (/auth/login, /auth/logout, /auth/refresh)
+- ⏳ User handlers (/users, /users/activate, /users/me)
 - ⏳ OAuth2 integration (Google, GitHub)
 - ⏳ Middleware de autenticação
 - ⏳ Middleware de autorização (RBAC)

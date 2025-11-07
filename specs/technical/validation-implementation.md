@@ -615,10 +615,11 @@ func (h *AuthHandler) Register(c *gin.Context) {
 
 Request:
 ```json
-POST /auth/register
+POST /users
 {
   "email": "user@example.com",
-  "password": "abc"
+  "password": "abc",
+  "organization_name": "Minha Empresa"
 }
 ```
 
@@ -708,10 +709,11 @@ func (e *MultiFieldValidationError) Error() string {
 
 Request:
 ```json
-POST /auth/register
+POST /users
 {
   "email": "invalid",
-  "password": "abc"
+  "password": "abc",
+  "organization_name": "Minha Empresa"
 }
 ```
 

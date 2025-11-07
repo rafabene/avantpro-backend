@@ -23,10 +23,10 @@ Sistema de autenticação e autorização multi-camadas:
                      │
                      ▼
 ┌──────────────────────────────────────────────────────────┐
-│               AUTH ENDPOINTS                              │
+│            AUTH & USER ENDPOINTS                          │
 │                                                           │
+│  POST /users              - Registro de usuário          │
 │  POST /auth/login         - Login com email/password     │
-│  POST /auth/register      - Registro de usuário          │
 │  POST /auth/refresh       - Renovar access token         │
 │  POST /auth/logout        - Logout (invalidar tokens)    │
 │  GET  /auth/oauth/google  - Iniciar OAuth Google         │
@@ -917,10 +917,16 @@ func setupRoutes(
     // Public routes
     public := router.Group("/api/v1")
     {
+        // Autenticação
         public.POST("/auth/login", authHandler.Login)
-        public.POST("/auth/register", authHandler.Register)
         public.GET("/auth/oauth/google", authHandler.LoginWithGoogle)
         public.GET("/auth/oauth/google/callback", authHandler.GoogleCallback)
+
+        // Gerenciamento de usuários (não autenticação)
+        public.POST("/users", userHandler.CreateUser)
+        public.GET("/users/activate", userHandler.Activate)
+        public.POST("/users/resend-activation", userHandler.ResendActivation)
+        public.POST("/users/invites/accept", userHandler.AcceptInvite)
     }
 
     // Authenticated routes
@@ -929,7 +935,7 @@ func setupRoutes(
     {
         authenticated.POST("/auth/refresh", authHandler.RefreshToken)
         authenticated.POST("/auth/logout", authHandler.Logout)
-        authenticated.GET("/me", userHandler.GetCurrentUser)
+        authenticated.PATCH("/users/me", userHandler.UpdateProfile)
     }
 
     // Admin only routes

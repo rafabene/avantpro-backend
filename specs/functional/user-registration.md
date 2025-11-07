@@ -29,13 +29,13 @@ O AvantPro segue um **fluxo de registro simplificado em 2 etapas** para minimiza
 1. Registro Completo (1 formulário) → 2. Ativação via Email (1 clique) → DASHBOARD
 ```
 
-**Etapa 1 - Registro Completo** (`POST /auth/register-complete`):
+**Etapa 1 - Registro Completo** (`POST /users`):
 - Usuário fornece em **1 formulário**: email + senha + nome da empresa
 - Sistema cria **atomicamente**: User (inactive) + Organization + OrganizationMember (owner)
 - Sistema envia email de ativação com link especial
 - **Diferença do fluxo antigo**: Organization criada imediatamente, não após login
 
-**Etapa 2 - Ativação via Email** (`GET /activate?token=xyz`):
+**Etapa 2 - Ativação via Email** (`GET /users/activate?token=xyz`):
 - **Obrigatória** - Conta permanece inativa até ativação
 - Usuário clica no link do email
 - Sistema ativa conta (status=active)
@@ -336,7 +336,7 @@ Usuário pode criar conta via convite (não precisa fornecer nome da empresa):
 ```
 ┌─────────────────────────────────────────────────┐
 │ ETAPA 1: Registro Completo                      │
-│ POST /auth/register-complete                    │
+│ POST /users                                     │
 └─────────────────────────────────────────────────┘
         ↓
 Body: {
@@ -363,7 +363,7 @@ Response 201 Created: {
         ↓
 ┌─────────────────────────────────────────────────┐
 │ ETAPA 2: Ativação via Email (1 clique)          │
-│ GET /activate?token=abc123                      │
+│ GET /users/activate?token=abc123                │
 └─────────────────────────────────────────────────┘
         ↓
 ┌─────────────────────────────────────────────────┐
@@ -429,7 +429,7 @@ Email: "Clique aqui: /accept-invite?token=xyz"
         ↓
 ┌─────────────────────────────────────────────────┐
 │ Maria clica no link                             │
-│ POST /auth/accept-invite                        │
+│ POST /users/invites/accept                      │
 └─────────────────────────────────────────────────┘
         ↓
 Body: {
@@ -718,9 +718,9 @@ And NÃO precisa submeter múltiplas vezes para descobrir todos os erros
 
 ## 6. Endpoints
 
-### 6.1 POST /auth/register-complete
+### 6.1 POST /users
 
-**Descrição**: Criar conta + organization em uma única etapa (fluxo simplificado)
+**Descrição**: Criar conta + organization em uma única etapa
 
 **Request**:
 ```json
@@ -751,13 +751,13 @@ And NÃO precisa submeter múltiplas vezes para descobrir todos os erros
 
 ---
 
-### 6.2 GET /activate
+### 6.2 GET /users/activate
 
 **Descrição**: Ativar conta + login automático via link do email
 
 **Request**:
 ```http
-GET /activate?token=abc123
+GET /users/activate?token=abc123
 ```
 
 **Response 200 OK** (com redirect):
@@ -793,7 +793,7 @@ GET /activate?token=abc123
 
 ---
 
-### 6.3 POST /auth/resend-activation
+### 6.3 POST /users/resend-activation
 
 **Descrição**: Reenviar email de ativação
 
@@ -823,7 +823,7 @@ GET /activate?token=abc123
 
 ---
 
-### 6.4 POST /auth/accept-invite
+### 6.4 POST /users/invites/accept
 
 **Descrição**: Aceitar convite (cria user ou adiciona a organization)
 
@@ -892,13 +892,13 @@ Content-Type: application/json
 
 ---
 
-### 6.6 PATCH /me (Protegido)
+### 6.6 PATCH /users/me (Protegido)
 
 **Descrição**: Atualizar perfil do usuário (nome completo, avatar, etc)
 
 **Request**:
 ```http
-PATCH /me
+PATCH /users/me
 Authorization: Bearer <access_token>
 Content-Type: application/json
 
@@ -958,11 +958,11 @@ Content-Type: application/json
 ### 8.1 Rate Limiting
 
 ```
-POST /auth/register-complete: 3 tentativas/hora por IP
-GET /activate: 5 tentativas/hora por IP
-POST /auth/resend-activation: 3 tentativas/hora por email
+POST /users: 3 tentativas/hora por IP
+GET /users/activate: 5 tentativas/hora por IP
+POST /users/resend-activation: 3 tentativas/hora por email
 POST /auth/login: 5 tentativas/15min por email
-POST /auth/accept-invite: 5 tentativas/hora por token
+POST /users/invites/accept: 5 tentativas/hora por token
 POST /invites: 10 convites/dia por organization
 ```
 
@@ -1049,9 +1049,9 @@ Role: Membro
 - **RN-39**: Token DEVE ser armazenado em cookie HttpOnly + SameSite=Strict
 
 **Endpoints Protegidos**:
-- POST /auth/register-complete
-- POST /auth/resend-activation
-- POST /auth/accept-invite
+- POST /users
+- POST /users/resend-activation
+- POST /users/invites/accept
 - POST /invites
 
 **Configuração de Cookie CSRF**:
@@ -1070,8 +1070,8 @@ Role: Membro
 - **RN-43**: Erro de database NÃO DEVE alterar timing da response
 
 **Endpoints Afetados**:
-- POST /auth/register-complete
-- POST /auth/resend-activation
+- POST /users
+- POST /users/resend-activation
 
 **Objetivo**: Prevenir que atacante descubra emails cadastrados via análise de tempo de resposta.
 
@@ -1327,7 +1327,7 @@ func TestAcceptInvite_EmailVerifiedAutomatically(t *testing.T)
 ```go
 func TestSimplifiedRegistrationFlow(t *testing.T) {
     // 1. Registro Completo (cria User + Organization atomicamente)
-    response := httpPost("/auth/register-complete", map[string]string{
+    response := httpPost("/users", map[string]string{
         "email":             "joao@email.com",
         "password":          "Senha123",
         "organization_name": "Minha Empresa",
@@ -1350,7 +1350,7 @@ func TestSimplifiedRegistrationFlow(t *testing.T) {
 
     // 5. Ativar conta via token (login automático)
     token := findActivationToken(user.ID)
-    activateResponse := httpGet("/activate?token=" + token)
+    activateResponse := httpGet("/users/activate?token=" + token)
     assert.Equal(t, 200, activateResponse.StatusCode)
     assert.NotEmpty(t, activateResponse.AccessToken)
     assert.Equal(t, org.ID, activateResponse.Organization.ID)
@@ -1375,21 +1375,21 @@ func TestSimplifiedRegistrationFlow(t *testing.T) {
 - ❌ Nenhuma funcionalidade ainda
 
 **Pendente (Fase 1 - MVP)** - Fluxo Simplificado:
-- POST /auth/register-complete (cria User + Organization atomicamente)
-- GET /activate (ativa conta + login automático)
-- POST /auth/resend-activation (reenvio de email de ativação)
-- POST /auth/accept-invite (aceitar convite de organization)
+- POST /users (cria User + Organization atomicamente)
+- GET /users/activate (ativa conta + login automático)
+- POST /users/resend-activation (reenvio de email de ativação)
+- POST /users/invites/accept (aceitar convite de organization)
 - POST /invites (enviar convites)
-- PATCH /me (editar perfil)
+- PATCH /users/me (editar perfil)
 - Migration: activation_tokens table
 - Email de ativação (com contexto da organization)
 - Email de convite
 - Rate limiting básico
 
 **Removido do Escopo** (Simplificação de Fluxo):
-- ❌ POST /auth/register (substituído por /auth/register-complete)
-- ❌ POST /auth/verify-email (substituído por GET /activate)
-- ❌ POST /auth/resend-verification (substituído por /auth/resend-activation)
+- ❌ POST /auth/register (movido para POST /users - separação semântica)
+- ❌ POST /auth/verify-email (substituído por GET /users/activate)
+- ❌ POST /auth/resend-verification (substituído por /users/resend-activation)
 - ❌ POST /auth/login sem organization (não aplicável - org criada no registro)
 - ❌ POST /organizations com token de onboarding (org criada no registro)
 - ❌ email_verification_tokens table (substituída por activation_tokens)
